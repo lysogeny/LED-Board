@@ -1,67 +1,48 @@
-#define LOAD 10
+#include <Ethernet.h>
+#include "image.h"
+
+#define LOAD 7
 #define DATA 8
 #define CLOCK 9
 
-#define MAX_WIDTH 32
-#define MAX_HEIGHT 40
+typedef struct source_t {
+  unsigned int width;
+  unsigned int height;
+  unsigned int delay;
 
-typedef struct image_t {
-  int width;
-  int height;
-  byte data[MAX_WIDTH * MAX_HEIGHT];
+  int x;
+  int y;
 };
 
-image_t img;
+byte mac[] = { 0xBE, 0xB7, 0x5C, 0x30, 0xC3, 0x04 };
+IPAddress ip(10, 23, 42, 24);
+IPAddress router(10, 23, 42, 1);
+IPAddress subnet(255, 255, 254, 0);
 
-byte get_pixel(image_t* p, int x, int y) {
-  if(check_bounds(p, x, y) == false) {
-    return 0;
-  }
-  return p->data[y*p->width + x];
-}
+EthernetServer server(9000);
 
-void set_pixel(image_t* p, int x, int y, byte value) {
-  if(check_bounds(p, x, y) == false) {
-    return;
-  }
-  p->data[y*p->width + x] = value;
-}
 
-bool check_bounds(image_t* p, int x, int y) {
-  if(p == NULL) {
-    return false;
-  }
+image_t image;
 
-  if((x < 0) || (y < 0)) {
-    return false;
-  }
-
-  if((x > p->width) || (y > p->height)) {
-    return false;
-  }
-
-  return true;
-}
-
-void clear_pixels(image_t* p) {
-  if(p == NULL) {
-    return;
-  }
-  memset(p->data, 0, sizeof(p->data));
-}
+source_t source;
 
 void setup() {
+  // setup network
+  Ethernet.init(10);
+  Ethernet.begin(mac, ip, router, router, subnet);
+  server.begin();
+
   Serial.begin(115200);
 
-  img.width = 32;
-  img.height = 40;
+  image.width = 32;
+  image.height = 40;
 
-  pinMode(DATA,OUTPUT);
-  pinMode(CLOCK,OUTPUT);
-  pinMode(LOAD,OUTPUT);
+  pinMode(DATA, OUTPUT);
+  pinMode(CLOCK, OUTPUT);
+  pinMode(LOAD, OUTPUT);
 }
 
-void send_block(image_t* p, int x, int y) {  
+void send_block(image_t* p, int x, int y) {
   int order[32][2] = {
     { 1, 1 }, // 1
     { 1, 0 }, // 2
@@ -97,82 +78,160 @@ void send_block(image_t* p, int x, int y) {
     { 2, 2 }, // 32
   };
 
-  for(int n = 0; n < 32; n++) {
+  for (int n = 0; n < 32; n++) {
     int x_offset = order[n][0];
     int y_offset = order[n][1];
 
     byte pixel = get_pixel(p, x + x_offset, y + y_offset);
     digitalWrite(DATA, pixel);
     clock();
-  } 
+  }
 
   // 33 bit - kein pixel - senden
   clock();
 }
 
-void send_image(image_t* p) {
-  for(int y = 0; y < img.height; y+=8) {
-    for(int x = 0; x < img.width; x+=4) {
-      send_block(p, x, y);
+void send_image(image_t* img) {
+  for (int y = 0; y < MAX_HEIGHT; y += 8) {
+    for (int x = 0; x < MAX_WIDTH; x += 4) {
+      send_block(img, x, y);
     }
   }
-  
+
   load();
 }
 
 void clock() {
-  digitalWrite(CLOCK,HIGH);
-  digitalWrite(CLOCK,LOW);
+  digitalWrite(CLOCK, HIGH);
+  digitalWrite(CLOCK, LOW);
 }
 
 void load() {
-  digitalWrite(LOAD,HIGH);
-  digitalWrite(LOAD,LOW);
+  digitalWrite(LOAD, HIGH);
+  digitalWrite(LOAD, LOW);
+}
+
+// 0x00 0x00 0x00 0x00 0x00 0x00 0x00...
+// Width     Height    Delay     Pixel
+
+void default_image(image_t* p) {
+  static int offset = 0;
+
+  int dim = max(p->width, p->height);
+  for (int n = 0; n < dim; n++) {
+    int x = (n + offset) % p->width;
+    int y = n % p->height;
+
+    byte pixel = get_pixel(p, x, y);
+    set_pixel(p, x, y, !pixel);
+  }
+  offset++;
+}
+
+bool read_header(EthernetClient cli, source_t* src) {
+  // number of bytes already read from header
+  static int offset = 0;
+  // flag set, if header is complete
+  bool complete = false;
+
+  while (offset < 6) {
+    byte value = cli.read();
+    if (value == -1) {
+      break;
+    }
+
+    switch (offset) {
+      case 0:
+        src->width = (value << 8);
+        break;
+      case 1:
+        src->width |= value;
+        break;
+      case 2:
+        src->height = (value << 8);
+        break;
+      case 3:
+        src->height |= value;
+        break;
+      case 4:
+        src->delay = (value << 8);
+        break;
+      case 5:
+        src->delay |= value;
+        break;
+    }
+
+    offset++;
+  }
+
+  if (offset > 5) {
+    offset = 0;
+    complete = true;
+  }
+
+  return complete;
+}
+
+bool read_pixels(EthernetClient cli, source_t* src, image_t* img) {
+  // position of current pixel
+  static int x = 0;
+  static int y = 0;
+
+  // copy dimension from header
+  img->width = src->width;
+  img->height = src->height;
+
+  while (true) {
+    byte value = cli.read();
+    if (value == -1) {
+      return false;
+    }
+
+    set_pixel(img, x, y, value);
+
+    x++;
+    if (x >= img->width) {
+      x = 0;
+      y++;
+      if (y >= img->height) {
+        y = 0;
+        return true;
+      }
+    }
+  }
 }
 
 void loop() {
-  /*
-  static int offset = 0;
-  
-  digitalWrite(DATA, LOW);
-  for(int i = 0; i < 1320; i++) {
-    clock();
-  }
+  static bool seen_client = false;
+  static bool in_header = true;
 
-  digitalWrite(DATA, HIGH);
-  for(int i = 0; i < 33; i++) {
-    clock();
-  }
+  // if an incoming client connects, there will be bytes available to read:
+  EthernetClient client = server.available();
+  if (client) {
+    if (in_header == true) {
+      if (read_header(client, &source) == true) {
+        Serial.print("width=");
+        Serial.print(source.width);
+        Serial.print(" height=");
+        Serial.print(source.height);
+        Serial.print(" delay=");
+        Serial.println(source.delay);
+        in_header = false;
+      }
+    } else {
+      if (read_pixels(client, &source, &image) == true) {
+        Serial.println("pixels complete");
+        in_header = true;
 
-  digitalWrite(DATA, LOW);
-  for(int i = 0; i < offset; i++) {
-    clock();
-  }
-  offset++;
-  */
+        send_image(&image);
+      }
+    }
 
-
-  clear_pixels(&img);
-  /*
-  static int offset = 0;
-  for(int n = 0; n < 40; n++) {
-    set_pixel(&img, (n + offset) % 32, n, 1);
-    set_pixel(&img, (n + 16 + offset) % 32, n, 1);
-  }
-  offset = (offset + 1) % 33;
-  */
-  
-  memcpy(&(img.data), &invader, sizeof(invader));
-  
-  
-  /*
-  for(int x = 0; x < 4; x++) {
-    for(int y = 0; y < 8; y++) {
-      set_pixel(&img, x, y, 1);
+    seen_client = true;
+  } else {
+    if (seen_client == false) {
+      default_image(&image);
+      send_image(&image);
     }
   }
-  */
-  send_image(&img);
-
-  //delay(100);
 }
