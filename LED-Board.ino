@@ -135,7 +135,7 @@ bool read_header(EthernetClient cli, source_t* src) {
   bool complete = false;
 
   while (offset < 6) {
-    byte value = cli.read();
+    int value = cli.read();
     if (value == -1) {
       break;
     }
@@ -182,7 +182,7 @@ bool read_pixels(EthernetClient cli, source_t* src, image_t* img) {
   img->height = src->height;
 
   while (true) {
-    byte value = cli.read();
+    int value = cli.read();
     if (value == -1) {
       return false;
     }
@@ -229,9 +229,9 @@ void loop() {
 
     seen_client = true;
   } else {
-    if (seen_client == false) {
+    //if (seen_client == false) {
       default_image(&image);
       send_image(&image);
-    }
+    //}
   }
 }
