@@ -9,7 +9,7 @@ bool check_bounds(image_t* p, int x, int y) {
     return false;
   }
 
-  if ((x > p->width) || (y > p->height)) {
+  if ((x >= p->width) || (y >= p->height)) {
     return false;
   }
 
@@ -35,4 +35,9 @@ void clear_pixels(image_t* p) {
     return;
   }
   memset(p->data, 0, sizeof(p->data));
+}
+
+void set_size(image_t* p, int width, int height) {
+  p->width = min(width, MAX_WIDTH);
+  p->height = min(height, MAX_HEIGHT);
 }

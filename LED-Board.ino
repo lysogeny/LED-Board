@@ -5,14 +5,20 @@
 #define DATA 8
 #define CLOCK 9
 
-typedef struct source_t {
+struct _source_t {
+  // width and height of current frame
   unsigned int width;
   unsigned int height;
+
+  // delay until next frame is shown
   unsigned int delay;
 
+  // position of current pixel
   int x;
   int y;
 };
+
+typedef struct _source_t source_t;
 
 byte mac[] = { 0xBE, 0xB7, 0x5C, 0x30, 0xC3, 0x04 };
 IPAddress ip(10, 23, 42, 24);
@@ -34,12 +40,11 @@ void setup() {
 
   Serial.begin(115200);
 
-  image.width = 32;
-  image.height = 40;
-
   pinMode(DATA, OUTPUT);
   pinMode(CLOCK, OUTPUT);
   pinMode(LOAD, OUTPUT);
+
+  Serial.println("setup done");
 }
 
 void send_block(image_t* p, int x, int y) {
@@ -117,6 +122,10 @@ void load() {
 void default_image(image_t* p) {
   static int offset = 0;
 
+  // reset image to maximum size
+  set_size(p, 32767, 32767);
+
+  // toggle all pixels in tilted bars
   int dim = max(p->width, p->height);
   for (int n = 0; n < dim; n++) {
     int x = (n + offset) % p->width;
@@ -165,6 +174,9 @@ bool read_header(EthernetClient cli, source_t* src) {
   }
 
   if (offset > 5) {
+    src->x = 0;
+    src->y = 0;
+
     offset = 0;
     complete = true;
   }
@@ -173,13 +185,8 @@ bool read_header(EthernetClient cli, source_t* src) {
 }
 
 bool read_pixels(EthernetClient cli, source_t* src, image_t* img) {
-  // position of current pixel
-  static int x = 0;
-  static int y = 0;
-
   // copy dimension from header
-  img->width = src->width;
-  img->height = src->height;
+  set_size(img, src->width, src->height);
 
   while (true) {
     int value = cli.read();
@@ -187,14 +194,14 @@ bool read_pixels(EthernetClient cli, source_t* src, image_t* img) {
       return false;
     }
 
-    set_pixel(img, x, y, value);
+    set_pixel(img, src->x, src->y, value);
 
-    x++;
-    if (x >= img->width) {
-      x = 0;
-      y++;
-      if (y >= img->height) {
-        y = 0;
+    src->x++;
+    if (src->x >= src->width) {
+      src->x = 0;
+      src->y++;
+      if (src->y >= src->height) {
+        src->y = 0;
         return true;
       }
     }
@@ -202,7 +209,7 @@ bool read_pixels(EthernetClient cli, source_t* src, image_t* img) {
 }
 
 void loop() {
-  static bool seen_client = false;
+  static unsigned long last_activity = 0;
   static bool in_header = true;
 
   // if an incoming client connects, there will be bytes available to read:
@@ -216,7 +223,13 @@ void loop() {
         Serial.print(source.height);
         Serial.print(" delay=");
         Serial.println(source.delay);
-        in_header = false;
+
+        if ((source.width == 0) || (source.height == 0)) {
+          Serial.println("invalid dimension");
+          client.stop();
+        } else {
+          in_header = false;
+        }
       }
     } else {
       if (read_pixels(client, &source, &image) == true) {
@@ -226,12 +239,11 @@ void loop() {
         send_image(&image);
       }
     }
-
-    seen_client = true;
+    last_activity = millis();
   } else {
-    //if (seen_client == false) {
+    if ((millis() - last_activity) > 60000) {
       default_image(&image);
       send_image(&image);
-    //}
+    }
   }
 }
