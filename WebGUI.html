@@ -312,12 +312,15 @@
 
     function showHiddenCanvas()
     {
+      var threasholdRGB = 200;
+      var threasholdAlpha = 100;
+
       for(var y = 0; y < yMax; y++)
       {
         for(var x = 0; x < xMax; x++)
         {
           var p = hiddenCtx.getImageData(x, y, 1, 1).data;
-          if((p[0] < 128 || p[1] < 128 || p[2] < 128) && p[3] > 128)
+          if((p[0] < threasholdRGB || p[1] < threasholdRGB || p[2] < threasholdRGB) && p[3] > threasholdAlpha)
           {
             pixelBuffer[x+xMax*y] = 1;
           }
