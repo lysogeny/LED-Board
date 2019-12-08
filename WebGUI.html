@@ -7,25 +7,15 @@
     <style>
       body {background-color: #ccc; margin: 0; padding: 0; text-align: center;}
       input {background-color: #ccc; border-radius: 2px;}
-      .menu { background-color: rgb(4, 0, 59); color: #ccc; padding: 1.2em; width: 100%; box-sizing: border-box;}
-      .panelRow{
-        display: inline-block;
-        font-size: 0;
-        margin-top: 0px;}
-      .pixel{
-        float: left;
-        width: 20px;
-        height: 20px;
-        margin-right:0px;
-        background-color: #000;
-      }
+      .menu { background-color: rgb(4, 0, 59); color: #ccc; padding: 1.2em; width: 100%; box-sizing: border-box; margin-bottom: 1em;}
+      .btn { background-color: #005; border-radius: 2px; color:#ccc; box-shadow: 5px, 5px, 5px, #000; padding: 5px;}
     </style>
   </head>
   <body>
     <div class="menu">
       IP: <input type="text" id="ip" value="10.23.42.24">
       <div style="width: 2em; display: inline-block;" ></div>
-      Port: <input type="text" id="port" value="81">
+      Port: <input type="text" id="port" value="81" style="width: 2.5em;">
       <div style="width: 2em; display: inline-block;" ></div>
       Panel width: <input type="text" id="width" value="32" style="width: 2.5em;" onchange="creatGUI()">
       height: <input type="text" id="height" value="40" style="width: 2.5em;" onchange="creatGUI()">
@@ -34,8 +24,13 @@
       
     </div>
 
-    <input type="button" value="clear" onclick="clearCanvas()"><br />
-    <canvas id="can" style="background-color:#000; margin: 1em;"></canvas>
+    <input class="btn" type="button" value="clear" onclick="clearCanvas()">
+    <input type="file" id="fileupload" value="upload file" style="display: none;" />
+    <label class="btn" for="fileupload">upload a file</label>
+    <br />
+    <canvas id="can" style="background-color:#000; margin: 1em;"></canvas> <br />
+    <textarea id="textInput"></textarea><br />
+    <input type="button" value="print" onclick="textInputChanged()" />
 
     <script type="text/javascript">
       var socket;
@@ -237,6 +232,131 @@
       
       ctx.fill();
       ctx.stroke();
+    }
+
+    function displayBufferContent()
+    {
+      dragMode = true;
+      for(x = 0; x < xMax; x++)
+      {
+        for(y = 0; y < yMax; y++)
+        {
+          if(pixelBuffer[x + xMax*y] != 0)
+          {
+            drawDot(x*scaling+1, y*scaling +1);
+          }
+          else
+          {
+            drawDot(x*scaling+1, y*scaling +1, true);
+          }
+        }
+      }
+      dragMode = false;
+      changeFlag = true;
+    }
+
+    //====================================================================
+    //========= image upload functione... ==========
+    //====================================================================
+
+    document.getElementById("fileupload").addEventListener('change', imageChanged, false);
+    hiddenCanvas = document.createElement("canvas");
+    hiddenCtx = hiddenCanvas.getContext('2d');
+
+    function imageChanged(evt)
+    {
+      
+      var file = evt.target.files[0];
+      if (!file.type.match('image.*')) 
+      {
+        alert("wrong file format");
+        return;
+      }
+
+      var reader = new FileReader();
+      reader.onload = function (event)
+      {
+        var img = new Image();
+        img.src = event.target.result;
+        img.onload = function()
+        {
+          width = img.width;
+          height = img.height;
+          if (width > height) 
+          {
+            if (width > xMax) 
+            {
+              height *= xMax / width;
+              width = xMax;
+            }
+          } 
+          else 
+          {
+            if (height > yMax) 
+            {
+              width *= yMax / height;
+              height = yMax;
+            }
+          }
+          hiddenCanvas.width = width;
+          hiddenCanvas.height = height;
+          hiddenCtx.drawImage(img, 0, 0, width, height);
+          
+          showHiddenCanvas();
+
+        }
+        img.src = event.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function showHiddenCanvas()
+    {
+      for(var y = 0; y < yMax; y++)
+      {
+        for(var x = 0; x < xMax; x++)
+        {
+          var p = hiddenCtx.getImageData(x, y, 1, 1).data;
+          if((p[0] < 128 || p[1] < 128 || p[2] < 128) && p[3] > 128)
+          {
+            pixelBuffer[x+xMax*y] = 1;
+          }
+          else
+          {
+            pixelBuffer[x+xMax*y] = 0;
+          }
+        }
+      }
+
+      displayBufferContent();
+    }
+
+    function printText(texttodraw)
+    {
+      hiddenCanvas.width = xMax;
+      hiddenCanvas.height = yMax;
+
+      var lines = texttodraw.split('\n');
+
+      hiddenCtx.clearRect(0, 0, hiddenCanvas.width, hiddenCanvas.height);
+
+      hiddenCtx.font = '10px Verdana';
+      hiddenCtx.textBaseline="top"; 
+      var lineheight = 10;
+
+      for (var j = 0; j<lines.length; j++)
+      {
+        hiddenCtx.fillText(lines[j], 0, 0 + (j*lineheight));
+      }
+
+      showHiddenCanvas();
+    }
+
+
+    function textInputChanged()
+    {
+      var text = document.getElementById("textInput").value;
+      printText(text);
     }
 
     </script>
