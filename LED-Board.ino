@@ -1,53 +1,124 @@
+#include <Arduino.h>
 #include <Ethernet.h>
-#include "image.h"
+
+#include "src/WebSocketsServer.h"
+#include "src/image.hpp"
+#include "src/ProtocolDL.hpp"
+
+#define USE_SERIAL Serial
+
 
 #define LOAD 7
 #define DATA 8
 #define CLOCK 9
 
-struct _source_t {
-  // width and height of current frame
-  unsigned int width;
-  unsigned int height;
-
-  // delay until next frame is shown
-  unsigned int delay;
-
-  // position of current pixel
-  int x;
-  int y;
-};
-
-typedef struct _source_t source_t;
 
 byte mac[] = { 0xBE, 0xB7, 0x5C, 0x30, 0xC3, 0x04 };
 IPAddress ip(10, 23, 42, 24);
 IPAddress router(10, 23, 42, 1);
 IPAddress subnet(255, 255, 254, 0);
 
-EthernetServer server(9000);
+WebSocketsServer webSocket = WebSocketsServer(81);
 
+Image image;
+ProtocolDL protocol = ProtocolDL(image);
 
-image_t image;
+unsigned long last_activity = 0;
 
-source_t source;
+bool someOneIsConnected = false;
+
+void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length) {
+    static bool in_header = true;
+
+    switch(type) {
+        case WStype_DISCONNECTED:
+            USE_SERIAL.print("[");
+            USE_SERIAL.print(num);
+            USE_SERIAL.println("] Disconnected!");
+            someOneIsConnected = false;
+            break;
+        case WStype_CONNECTED:
+            {
+                //IPAddress ip = webSocket.remoteIP(num);
+                USE_SERIAL.print("[");
+                USE_SERIAL.print(num);
+                USE_SERIAL.print("] Connected ");
+                USE_SERIAL.print(" url: ");
+                //USE_SERIAL.println(payload);
+				
+				// send message to client
+				webSocket.sendTXT(num, "Connected");
+                someOneIsConnected = true;
+            }
+            break;
+        case WStype_TEXT:
+            USE_SERIAL.print("[");
+            USE_SERIAL.print(num);
+            USE_SERIAL.print("] get Text: ");
+            //USE_SERIAL.println(payload);
+
+            // send message to client
+            // webSocket.sendTXT(num, "message here");
+
+            // send data to all connected clients
+            // webSocket.broadcastTXT("message here");
+            break;
+        case WStype_BIN:
+            USE_SERIAL.print("[");
+            USE_SERIAL.print(num);
+            USE_SERIAL.print("] get binary length: ");
+            USE_SERIAL.println(length);
+            
+            for(uint16_t i = 0; i < length; i++)
+            {
+              protocol.newByte(payload[i]);
+            }
+
+            if(protocol.isComplete())
+            {
+              Serial.println("complete");
+              send_image(&image);
+            }
+
+            break;
+    }
+
+}
 
 void setup() {
-  // setup network
-  Ethernet.init(10);
-  Ethernet.begin(mac, ip, router, router, subnet);
-  server.begin();
+    // USE_SERIAL.begin(921600);
+    USE_SERIAL.begin(115200);
 
-  Serial.begin(115200);
+    //Serial.setDebugOutput(true);
+    //USE_SERIAL.setDebugOutput(true);
 
-  pinMode(DATA, OUTPUT);
+    Ethernet.init(10);
+    Ethernet.begin(mac, ip, router, router, subnet);
+
+    USE_SERIAL.println();
+    USE_SERIAL.println();
+    USE_SERIAL.println();
+
+    for(uint8_t t = 4; t > 0; t--) {
+        USE_SERIAL.print("[SETUP] BOOT WAIT ");
+        USE_SERIAL.print(t);
+        USE_SERIAL.println("...");
+        USE_SERIAL.flush();
+        delay(1000);
+    }
+
+    webSocket.begin();
+    webSocket.onEvent(webSocketEvent);
+
+    pinMode(DATA, OUTPUT);
   pinMode(CLOCK, OUTPUT);
   pinMode(LOAD, OUTPUT);
 
   Serial.println("setup done");
 }
 
-void send_block(image_t* p, int x, int y) {
+
+void send_block(Image* p, int x, int y) {
   int order[32][2] = {
     { 1, 1 }, // 1
     { 1, 0 }, // 2
@@ -87,7 +158,7 @@ void send_block(image_t* p, int x, int y) {
     int x_offset = order[n][0];
     int y_offset = order[n][1];
 
-    byte pixel = get_pixel(p, x + x_offset, y + y_offset);
+    byte pixel = p->get_pixel(x + x_offset, y + y_offset);
     digitalWrite(DATA, pixel);
     clock();
   }
@@ -96,7 +167,7 @@ void send_block(image_t* p, int x, int y) {
   clock();
 }
 
-void send_image(image_t* img) {
+void send_image(Image* img) {
   for (int y = 0; y < MAX_HEIGHT; y += 8) {
     for (int x = 0; x < MAX_WIDTH; x += 4) {
       send_block(img, x, y);
@@ -119,131 +190,29 @@ void load() {
 // 0x00 0x00 0x00 0x00 0x00 0x00 0x00...
 // Width     Height    Delay     Pixel
 
-void default_image(image_t* p) {
+void default_image(Image* p) {
   static int offset = 0;
 
   // reset image to maximum size
-  set_size(p, 32767, 32767);
+  p->set_size(32767, 32767);
 
   // toggle all pixels in tilted bars
-  int dim = max(p->width, p->height);
+  int dim = max(p->getWidth(), p->getHeight());
   for (int n = 0; n < dim; n++) {
-    int x = (n + offset) % p->width;
-    int y = n % p->height;
+    int x = (n + offset) % p->getWidth();
+    int y = n % p->getHeight();
 
-    byte pixel = get_pixel(p, x, y);
-    set_pixel(p, x, y, !pixel);
+    byte pixel = p->get_pixel(x, y);
+    p->set_pixel(x, y, !pixel);
   }
   offset++;
 }
 
-bool read_header(EthernetClient cli, source_t* src) {
-  // number of bytes already read from header
-  static int offset = 0;
-  // flag set, if header is complete
-  bool complete = false;
-
-  while (offset < 6) {
-    int value = cli.read();
-    if (value == -1) {
-      break;
-    }
-
-    switch (offset) {
-      case 0:
-        src->width = (value << 8);
-        break;
-      case 1:
-        src->width |= value;
-        break;
-      case 2:
-        src->height = (value << 8);
-        break;
-      case 3:
-        src->height |= value;
-        break;
-      case 4:
-        src->delay = (value << 8);
-        break;
-      case 5:
-        src->delay |= value;
-        break;
-    }
-
-    offset++;
-  }
-
-  if (offset > 5) {
-    src->x = 0;
-    src->y = 0;
-
-    offset = 0;
-    complete = true;
-  }
-
-  return complete;
-}
-
-bool read_pixels(EthernetClient cli, source_t* src, image_t* img) {
-  // copy dimension from header
-  set_size(img, src->width, src->height);
-
-  while (true) {
-    int value = cli.read();
-    if (value == -1) {
-      return false;
-    }
-
-    set_pixel(img, src->x, src->y, value);
-
-    src->x++;
-    if (src->x >= src->width) {
-      src->x = 0;
-      src->y++;
-      if (src->y >= src->height) {
-        src->y = 0;
-        return true;
-      }
-    }
-  }
-}
-
 void loop() {
-  static unsigned long last_activity = 0;
-  static bool in_header = true;
+    webSocket.loop();
 
-  // if an incoming client connects, there will be bytes available to read:
-  EthernetClient client = server.available();
-  if (client) {
-    if (in_header == true) {
-      if (read_header(client, &source) == true) {
-        Serial.print("width=");
-        Serial.print(source.width);
-        Serial.print(" height=");
-        Serial.print(source.height);
-        Serial.print(" delay=");
-        Serial.println(source.delay);
-
-        if ((source.width == 0) || (source.height == 0)) {
-          Serial.println("invalid dimension");
-          client.stop();
-        } else {
-          in_header = false;
-        }
-      }
-    } else {
-      if (read_pixels(client, &source, &image) == true) {
-        Serial.println("pixels complete");
-        in_header = true;
-
+    if (someOneIsConnected == false) {
+        default_image(&image);
         send_image(&image);
-      }
     }
-    last_activity = millis();
-  } else {
-    if ((millis() - last_activity) > 60000) {
-      default_image(&image);
-      send_image(&image);
-    }
-  }
 }
