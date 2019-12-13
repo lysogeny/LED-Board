@@ -16,7 +16,8 @@ IPAddress subnet(255, 255, 254, 0);
 WebSocketsServer webSocket = WebSocketsServer(81);
 
 Image image;
-Panel panel;
+Panel panel1(22, 24, 23);       //data, clock, load
+Panel panel2(28, 29, 31);
 ProtocolDL protocol = ProtocolDL(image);
 
 unsigned long last_activity = 0;
@@ -73,7 +74,8 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
             if(protocol.isComplete())
             {
               Serial.println("complete");
-              panel.send_image(&image);
+              panel1.send_image(&image);
+              panel2.send_image(&image);
             }
 
             break;
@@ -106,7 +108,8 @@ void setup() {
     webSocket.begin();
     webSocket.onEvent(webSocketEvent);
 
-    panel.init();
+    panel1.init();
+    panel2.init();
 
     Serial.println("setup done");
 }
@@ -139,6 +142,7 @@ void loop() {
 
     if (someOneIsConnected == false) {
         default_image(&image);
-        panel.send_image(&image);
+        panel1.send_image(&image);
+        panel2.send_image(&image);
     }
 }

@@ -1,14 +1,17 @@
 #include "panel.hpp"
 
-#define LOAD 7
-#define DATA 8
-#define CLOCK 9
+Panel::Panel(uint8_t pData, uint8_t pClock, uint8_t pLoad)
+{
+  pinData = pData;
+  pinLoad = pLoad;
+  pinClock = pClock;
+}
 
 void Panel::init()
 {
-    pinMode(DATA, OUTPUT);
-    pinMode(CLOCK, OUTPUT);
-    pinMode(LOAD, OUTPUT);
+    pinMode(pinData, OUTPUT);
+    pinMode(pinClock, OUTPUT);
+    pinMode(pinLoad, OUTPUT);
 }
 
 void Panel::send_image(Image* img) {
@@ -23,17 +26,17 @@ void Panel::send_image(Image* img) {
 
 
 void Panel::clock() {
-  PORTH |= (1 << PH6);
-  PORTH &= ~(1 << PH6);
-  //digitalWrite(CLOCK, HIGH);
-  //digitalWrite(CLOCK, LOW);
+  //PORTA |= (1 << PA2);
+  //PORTA &= ~(1 << PA2);
+  digitalWrite(pinClock, HIGH);
+  digitalWrite(pinClock, LOW);
 }
 
 void Panel::load() {
-  PORTH |= (1 << PH4);
-  PORTH &= ~(1 << PH4);
-  //digitalWrite(LOAD, HIGH);
-  //digitalWrite(LOAD, LOW);
+  //PORTB |= (1 << PB0);
+  //PORTB &= ~(1 << PB0);
+  digitalWrite(pinLoad, HIGH);
+  digitalWrite(pinLoad, LOW);
 }
 
 
@@ -79,16 +82,16 @@ void Panel::send_block(Image* p, int x, int y) {
 
     byte pixel = p->get_pixel(x + x_offset, y + y_offset);
     
-    if(pixel)
+    /*if(pixel)
     {
-      PORTH |= (1 << PH5);
+      PORTB |= (1 << PB2);
     }
     else
     {
-      PORTH &= ~(1 << PH5);
-    }
+      PORTB &= ~(1 << PB2);
+    }*/
     
-    //digitalWrite(DATA, pixel);
+    digitalWrite(pinData, pixel);
     clock();
   }
 
