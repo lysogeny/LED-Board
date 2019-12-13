@@ -16,8 +16,8 @@ IPAddress subnet(255, 255, 254, 0);
 WebSocketsServer webSocket = WebSocketsServer(81);
 
 Image image;
-Panel panel1(22, 24, 23);       //data, clock, load
-Panel panel2(28, 29, 31);
+Panel panel1(22, 24, 23, 0 * PANEL_WIDTH, 0 * PANEL_HEIGHT);       //data, clock, load
+Panel panel2(28, 29, 31, 1 * PANEL_WIDTH, 0 * PANEL_HEIGHT);
 ProtocolDL protocol = ProtocolDL(image);
 
 unsigned long last_activity = 0;

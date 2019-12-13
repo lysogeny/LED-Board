@@ -1,10 +1,13 @@
 #include "panel.hpp"
 
-Panel::Panel(uint8_t pData, uint8_t pClock, uint8_t pLoad)
+Panel::Panel(uint8_t pData, uint8_t pClock, uint8_t pLoad, int x, int y)
 {
   pinData = pData;
   pinLoad = pLoad;
   pinClock = pClock;
+
+  posX = x;
+  posY = y;
 }
 
 void Panel::init()
@@ -15,8 +18,11 @@ void Panel::init()
 }
 
 void Panel::send_image(Image* img) {
-  for (int y = 0; y < MAX_HEIGHT; y += 8) {
-    for (int x = 0; x < MAX_WIDTH; x += 4) {
+  int endY = posY + PANEL_HEIGHT;
+  int endX = posX + PANEL_WIDTH;
+
+  for (int y = posY; y < endY; y += 8) {
+    for (int x = posX; x < endX; x += 4) {
       send_block(img, x, y);
     }
   }

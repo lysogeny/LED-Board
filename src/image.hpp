@@ -3,7 +3,7 @@
 
 #include <Arduino.h>
 
-#define MAX_WIDTH 32
+#define MAX_WIDTH 64
 #define MAX_HEIGHT 40
 
 class Image
