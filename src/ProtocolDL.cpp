@@ -45,22 +45,25 @@ void ProtocolDL::newByte(uint8_t data)
             break;
 
         default:
-            image->set_pixel(source.x, source.y, data);
+            for (int shift = 7; shift >= 0; shift--) {
+                byte pixel = (data >> shift) & 1;
+                image->set_pixel(source.x, source.y, pixel);
 
-            if(source.x == (source.width - 1) && source.y == (source.height - 1))
-            {
-                //this was the last pixel
-                complete = true;
-                cnt = 0;
-            }
-            else
-            {
-                source.x++;
-                if (source.x >= source.width) {
-                    source.x = 0;
-                    source.y++;
-                    if (source.y >= source.height) {
-                        source.y = 0;
+                if(source.x == (source.width - 1) && source.y == (source.height - 1))
+                {
+                    //this was the last pixel
+                    complete = true;
+                    cnt = 0;
+                }
+                else
+                {
+                    source.x++;
+                    if (source.x >= source.width) {
+                        source.x = 0;
+                        source.y++;
+                        if (source.y >= source.height) {
+                            source.y = 0;
+                        }
                     }
                 }
             }

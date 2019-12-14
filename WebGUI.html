@@ -123,7 +123,25 @@
         header[5] = 0;
 
         socket.send(header);
-        socket.send(pixelBuffer);
+
+        buf = new Uint8Array((xMax * yMax) / 8);
+
+        group = 0;
+        n = 0;
+        shift = 7;
+        for (pixel of pixelBuffer) {
+          group |= (pixel << shift);
+          shift--;
+
+          if (shift < 0) {
+            buf[n] = group;
+            group = 0;
+            shift = 7;
+            n++;
+          }  
+        }
+
+        socket.send(buf);
       }
 
       function creatGUI()
