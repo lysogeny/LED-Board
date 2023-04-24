@@ -3,8 +3,6 @@
 
 #include "image.hpp"
 
-#define PANEL_WIDTH 32
-#define PANEL_HEIGHT 40
 
 class Panel
 {

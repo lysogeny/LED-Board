@@ -15,6 +15,7 @@ void Panel::init()
     pinMode(pinData, OUTPUT);
     pinMode(pinClock, OUTPUT);
     pinMode(pinLoad, OUTPUT);
+    Serial.println(F("Panel init"));
 }
 
 void Panel::send_image(Image* img) {
@@ -23,7 +24,7 @@ void Panel::send_image(Image* img) {
 
   for (int y = posY; y < endY; y += 8) {
     for (int x = posX; x < endX; x += 4) {
-      send_block(img, x, y);
+       send_block(img, x, y);
     }
   }
 

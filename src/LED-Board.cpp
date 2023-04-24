@@ -1,117 +1,121 @@
 #include <Arduino.h>
 #include <Ethernet.h>
+#include <EthernetUdp.h>
 
-#include "src/WebSocketsServer.h"
-#include "src/image.hpp"
-#include "src/panel.hpp"
-#include "src/ProtocolDL.hpp"
+#include "image.hpp"
+#include "panel.hpp"
 
-#define USE_SERIAL Serial
+// An EthernetUDP instance to let us send and receive packets over UDP
+EthernetUDP Udp;
 
 byte mac[] = { 0xBE, 0xB7, 0x5C, 0x30, 0xC3, 0x04 };
-IPAddress ip(10, 23, 42, 24);
-IPAddress router(10, 23, 42, 1);
-IPAddress subnet(255, 255, 254, 0);
-
-WebSocketsServer webSocket = WebSocketsServer(81);
 
 Image image;
-Panel panel1(22, 24, 23, 0 * PANEL_WIDTH, 0 * PANEL_HEIGHT);       //data, clock, load
-Panel panel2(28, 29, 31, 1 * PANEL_WIDTH, 0 * PANEL_HEIGHT);
-ProtocolDL protocol = ProtocolDL(image);
+Panel panel1(23, 27, 25, 0 * PANEL_WIDTH, 0 * PANEL_HEIGHT);       //data, clock, load
+Panel panel2(29, 33, 31, 1 * PANEL_WIDTH, 0 * PANEL_HEIGHT);
+Panel panel3(35, 39, 37, 2 * PANEL_WIDTH, 0 * PANEL_HEIGHT);
+Panel panel4(41, 45, 43, 3 * PANEL_WIDTH, 0 * PANEL_HEIGHT);
+Panel panel5(47, 53, 49, 4 * PANEL_WIDTH, 0 * PANEL_HEIGHT);
+#define BITS_OF_BYTE      8
 
-unsigned long last_activity = 0;
+#define UDP_IMAGE_PORT  4242
+
+/**
+ *   800 Byte describing all 5 panels in bits
+ */
+/* uint8_t packetBuffer[(PANEL_WIDTH * PANEL_HEIGHT * MAXIMUM_PANELSIZE) / sizeof(uint8_t)];  // buffer to hold incoming packet,*/
+uint8_t packetBuffer[(PANEL_WIDTH * PANEL_HEIGHT * MAXIMUM_PANELSIZE) / BITS_OF_BYTE];
+/* Reply with error messages*/
+char ReplyBuffer[UDP_TX_PACKET_MAX_SIZE];        // a string to send back
 
 bool someOneIsConnected = false;
-
-void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length) {
-    static bool in_header = true;
-
-    switch(type) {
-        case WStype_DISCONNECTED:
-            USE_SERIAL.print("[");
-            USE_SERIAL.print(num);
-            USE_SERIAL.println("] Disconnected!");
-            someOneIsConnected = false;
-            break;
-        case WStype_CONNECTED:
-            {
-                //IPAddress ip = webSocket.remoteIP(num);
-                USE_SERIAL.print("[");
-                USE_SERIAL.print(num);
-                USE_SERIAL.print("] Connected ");
-                USE_SERIAL.print(" url: ");
-                //USE_SERIAL.println(payload);
-				
-				// send message to client
-				webSocket.sendTXT(num, "Connected");
-                someOneIsConnected = true;
-            }
-            break;
-        case WStype_TEXT:
-            USE_SERIAL.print("[");
-            USE_SERIAL.print(num);
-            USE_SERIAL.print("] get Text: ");
-            //USE_SERIAL.println(payload);
-
-            // send message to client
-            // webSocket.sendTXT(num, "message here");
-
-            // send data to all connected clients
-            // webSocket.broadcastTXT("message here");
-            break;
-        case WStype_BIN:
-            USE_SERIAL.print("[");
-            USE_SERIAL.print(num);
-            USE_SERIAL.print("] get binary length: ");
-            USE_SERIAL.println(length);
-            
-            for(uint16_t i = 0; i < length; i++)
-            {
-              protocol.newByte(payload[i]);
-            }
-
+/*FIXME hande image 
             if(protocol.isComplete())
             {
               Serial.println("complete");
               panel1.send_image(&image);
               panel2.send_image(&image);
+              panel3.send_image(&image);
+              panel4.send_image(&image);
+              panel5.send_image(&image);
             }
 
             break;
     }
+    */
 
+void receiveUDP() {
+  int packetSize = Udp.parsePacket();
+  if (packetSize) {
+    Serial.print("Received packet of size ");
+    Serial.println(packetSize);
+    Serial.print("From ");
+    IPAddress remote = Udp.remoteIP();
+    for (int i=0; i < 4; i++) {
+      Serial.print(remote[i], DEC);
+      if (i < 3) {
+        Serial.print(".");
+      }
+    }
+    Serial.print(", port ");
+    Serial.println(Udp.remotePort());
+    if (packetSize < ((int) sizeof(packetBuffer)) ) {
+      // read the packet into packetBufffer
+      Udp.read(packetBuffer, UDP_TX_PACKET_MAX_SIZE);
+    }
+
+    if (packetSize == sizeof(packetBuffer)) {
+
+    } else {
+      sprintf(ReplyBuffer, "Wrong packet size %d", packetSize);
+      // send a reply to the IP address and port that sent us the packet we received
+      Udp.beginPacket(Udp.remoteIP(), Udp.remotePort());
+      Udp.write(ReplyBuffer);
+      Udp.endPacket();
+    }
+  }
 }
 
 void setup() {
-    // USE_SERIAL.begin(921600);
-    USE_SERIAL.begin(115200);
-
-    //Serial.setDebugOutput(true);
-    //USE_SERIAL.setDebugOutput(true);
-
-    Ethernet.init(10);
-    Ethernet.begin(mac, ip, router, router, subnet);
-
-    USE_SERIAL.println();
-    USE_SERIAL.println();
-    USE_SERIAL.println();
-
-    for(uint8_t t = 4; t > 0; t--) {
-        USE_SERIAL.print("[SETUP] BOOT WAIT ");
-        USE_SERIAL.print(t);
-        USE_SERIAL.println("...");
-        USE_SERIAL.flush();
-        delay(1000);
-    }
-
-    webSocket.begin();
-    webSocket.onEvent(webSocketEvent);
+    Serial.begin(115200);
 
     panel1.init();
     panel2.init();
+    panel3.init();
+    panel4.init();
+    panel5.init();
+    Serial.print(F("Activate all LEDs\r\n"));
+    for (int x = 0; x < IMAGE_WIDTH; x++) {
+      for (int y = 0; y < IMAGE_HEIGHT; y++) {
+        image.set_pixel(x, y, 1);
+      }
+    }
+    panel1.send_image(&image);
+    panel2.send_image(&image);
+    panel3.send_image(&image);
+    panel4.send_image(&image);
+    panel5.send_image(&image);
+    
 
-    Serial.println("setup done");
+    Ethernet.init();
+    Ethernet.begin(mac);
+  if (Ethernet.begin(mac) == 0) {
+    Serial.println(F("Failed to configure Ethernet using DHCP"));
+    if (Ethernet.hardwareStatus() == EthernetNoHardware) {
+      Serial.println(F("Ethernet shield was not found.  Sorry, can't run without hardware. :("));
+    } else if (Ethernet.linkStatus() == LinkOFF) {
+      Serial.println(F("Ethernet cable is not connected."));
+    }
+    // no point in carrying on, so do nothing forevermore:
+    while (true) {
+      delay(1);
+    }
+  }
+  Serial.print(F("My IP address: "));
+  Serial.println(Ethernet.localIP());
+
+  // start UDP
+  Udp.begin(UDP_IMAGE_PORT);
 }
 
 
@@ -119,30 +123,33 @@ void setup() {
 // 0x00 0x00 0x00 0x00 0x00 0x00 0x00...
 // Width     Height    Delay     Pixel
 
-void default_image(Image* p) {
+void default_image(Image* i) {
   static int offset = 0;
 
-  // reset image to maximum size
-  p->set_size(32767, 32767);
+  // maximum size of image defined in constructor
 
   // toggle all pixels in tilted bars
-  int dim = max(p->getWidth(), p->getHeight());
+  int dim = max(IMAGE_WIDTH, IMAGE_HEIGHT);
   for (int n = 0; n < dim; n++) {
-    int x = (n + offset) % p->getWidth();
-    int y = n % p->getHeight();
+    int x = (n + offset) % IMAGE_WIDTH;
+    int y = n % IMAGE_HEIGHT;
 
-    byte pixel = p->get_pixel(x, y);
-    p->set_pixel(x, y, !pixel);
+    byte pixel = i->get_pixel(x, y);
+    i->set_pixel(x, y, !pixel);
   }
   offset++;
 }
 
 void loop() {
-    webSocket.loop();
-
+    receiveUDP();
+    delay(10);
     if (someOneIsConnected == false) {
         default_image(&image);
         panel1.send_image(&image);
         panel2.send_image(&image);
+        panel3.send_image(&image);
+        panel4.send_image(&image);
+        panel5.send_image(&image);
+      Serial.println(F(".\n"));
     }
 }

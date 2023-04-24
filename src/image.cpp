@@ -6,7 +6,7 @@ bool Image::check_bounds(int x, int y) {
     return false;
   }
 
-  if ((x >= width) || (y >= height)) {
+  if ((x >= IMAGE_WIDTH) || (y >= IMAGE_HEIGHT)) {
     return false;
   }
 
@@ -15,33 +15,20 @@ bool Image::check_bounds(int x, int y) {
 
 byte Image::get_pixel(int x, int y) {
   if (check_bounds(x, y) == false) {
-    return 0;
+    Serial.print(F("get_pixel outOfBound\n"));
+    return 1;
   }
-  return data[y * width + x];
+  return data[y * IMAGE_WIDTH + x];
 }
 
 void Image::set_pixel(int x, int y, byte value) {
   if (check_bounds(x, y) == false) {
+    Serial.print(F("set_pixel outOfBound\n"));
     return;
   }
-  data[y * width + x] = value;
+  data[y * IMAGE_WIDTH + x] = value;
 }
 
 void Image::clear_pixels() {
   memset(data, 0, sizeof(data));
-}
-
-void Image::set_size(int w, int h) {
-  width = min(w, MAX_WIDTH);
-  height = min(h, MAX_HEIGHT);
-}
-
-uint16_t Image::getWidth()
-{
-  return width;
-}
-
-uint16_t Image::getHeight()
-{
-  return height;
 }
