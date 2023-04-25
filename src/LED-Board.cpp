@@ -5,6 +5,7 @@
 #include "image.hpp"
 #include "panel.hpp"
 
+#define PIN_PWM_BOARD 46
 // An EthernetUDP instance to let us send and receive packets over UDP
 EthernetUDP Udp;
 
@@ -24,7 +25,8 @@ Panel panel5(47, 53, 49, 4 * PANEL_WIDTH, 0 * PANEL_HEIGHT);
  *   800 Byte describing all 5 panels in bits
  */
 /* uint8_t packetBuffer[(PANEL_WIDTH * PANEL_HEIGHT * MAXIMUM_PANELSIZE) / sizeof(uint8_t)];  // buffer to hold incoming packet,*/
-uint8_t packetBuffer[(PANEL_WIDTH * PANEL_HEIGHT * MAXIMUM_PANELSIZE) / BITS_OF_BYTE];
+const uint16_t packetBufferSize = (PANEL_WIDTH * PANEL_HEIGHT * MAXIMUM_PANELSIZE) / BITS_OF_BYTE + 1;
+uint8_t packetBuffer[packetBufferSize];
 /* Reply with error messages*/
 char ReplyBuffer[UDP_TX_PACKET_MAX_SIZE];        // a string to send back
 
@@ -59,12 +61,44 @@ void receiveUDP() {
     }
     Serial.print(", port ");
     Serial.println(Udp.remotePort());
+    someOneIsConnected = true;
     if (packetSize < ((int) sizeof(packetBuffer)) ) {
       // read the packet into packetBufffer
       Udp.read(packetBuffer, UDP_TX_PACKET_MAX_SIZE);
     }
 
     if (packetSize == sizeof(packetBuffer)) {
+      auto brightness = packetBuffer[0];
+      //OCR5A = brightness;
+      int offset = 0;
+      for(uint16_t i = 0; i < packetBufferSize;i++){
+        uint8_t value = packetBuffer[i];
+        
+        uint8_t a = (value | 0xb00000001) > 0 ? 1 : 0;
+        image.set_pixel_offset(offset, a);
+        offset++;
+        uint8_t b = (value | 0xb00000010) > 0 ? 1 : 0;
+        image.set_pixel_offset(offset, b);
+        offset++;
+        uint8_t c = (value | 0xb00000100) > 0 ? 1 : 0;
+        image.set_pixel_offset(offset, c);
+        offset++;
+        uint8_t d = (value | 0xb00001000) > 0 ? 1 : 0;
+        image.set_pixel_offset(offset, d);
+        offset++;
+        uint8_t e = (value | 0xb00010000) > 0 ? 1 : 0;
+        image.set_pixel_offset(offset, e);
+        offset++;
+        uint8_t f = (value | 0xb00100000) > 0 ? 1 : 0;
+        image.set_pixel_offset(offset, f);
+        offset++;
+        uint8_t g = (value | 0xb01000000) > 0 ? 1 : 0;
+        image.set_pixel_offset(offset, g);
+        offset++;
+        uint8_t h = (value | 0xb10000000) > 0 ? 1 : 0;
+        image.set_pixel_offset(offset, h);
+        offset++;
+      }
 
     } else {
       sprintf(ReplyBuffer, "Wrong packet size %d", packetSize);
@@ -78,6 +112,12 @@ void receiveUDP() {
 
 void setup() {
     Serial.begin(115200);
+    pinMode(46, OUTPUT);
+
+    //digitalWrite(46,1);
+    TCCR5A |= (1 << COM5A1);//pwm mode 8 bit
+    OCR5A = 255;
+    TCCR5B = TCCR5B & B11111000 | B00000001; 
 
     panel1.init();
     panel2.init();

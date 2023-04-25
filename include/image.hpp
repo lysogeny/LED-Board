@@ -15,6 +15,7 @@ class Image
   public:
     uint8_t get_pixel(int x, int y);
     void set_pixel(int x, int y, uint8_t value);
+    void set_pixel_offset(int offset, uint8_t value);
     void clear_pixels();
 
   private:
