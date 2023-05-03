@@ -63,44 +63,46 @@ void receiveUDP() {
     someOneIsConnected = true;
     if (packetSize < ((int) PACKET_LENGTH) ) {
       // read the packet into packetBufffer
-      Udp.read(packetBuffer, UDP_TX_PACKET_MAX_SIZE);
+      Udp.read(packetBuffer, packetSize);
     }
     Serial.println("");
 
     if (packetSize == PACKET_LENGTH) {
+      /* first byte describe the brightness */
       auto brightness = packetBuffer[0];
       //TODO OCR5A = brightness;
       image.clear_pixels();
       int offset = 0;
-      for(int i = 0; i < PACKET_LENGTH; i++){
+      /* second byte has the first LEDs*/
+      for(int i = 1; i < packetSize; i++){
         uint8_t value = packetBuffer[i];
         
-        uint8_t a = (value & 0xb00000001) > 0 ? 1 : 0;
+        uint8_t a = (value & 0x1) > 0 ? 1 : 0;
         image.set_pixel_offset(offset, a);
         offset++;
-        uint8_t b = ((value & 0xb00000010) > 0) ? 1 : 0;
+        uint8_t b = ((value & 0x2) > 0) ? 1 : 0;
         image.set_pixel_offset(offset, b);
         offset++;
-        uint8_t c = ((value & 0xb00000100) > 0) ? 1 : 0;
+        uint8_t c = ((value & 0x4) > 0) ? 1 : 0;
         image.set_pixel_offset(offset, c);
         offset++;
-        uint8_t d = ((value & 0xb00001000) > 0) ? 1 : 0;
+        uint8_t d = ((value & 0x8) > 0) ? 1 : 0;
         image.set_pixel_offset(offset, d);
         offset++;
-        uint8_t e = ((value & 0xb00010000) > 0) ? 1 : 0;
+        uint8_t e = ((value & 0x10) > 0) ? 1 : 0;
         image.set_pixel_offset(offset, e);
         offset++;
-        uint8_t f = ((value & 0xb00100000) > 0) ? 1 : 0;
+        uint8_t f = ((value & 0x20) > 0) ? 1 : 0;
         image.set_pixel_offset(offset, f);
         offset++;
-        uint8_t g = ((value & 0xb01000000) > 0) ? 1 : 0;
+        uint8_t g = ((value & 0x40) > 0) ? 1 : 0;
         image.set_pixel_offset(offset, g);
         offset++;
-        uint8_t h = ((value & 0xb10000000) > 0) ? 1 : 0;
+        uint8_t h = ((value & 0x80) > 0) ? 1 : 0;
         image.set_pixel_offset(offset, h);
         offset++;
       }
-
+      Serial.println(F("#"));
     } else {
       Serial.println(F("Wrong size"));
       sprintf(ReplyBuffer, "Wrong packet size %d", packetSize);
