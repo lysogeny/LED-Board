@@ -25,10 +25,34 @@ void Image::set_pixel_offset(int offset, byte value) {
   int x = offset % IMAGE_WIDTH;
   int y = floor(offset / IMAGE_WIDTH);
   if (check_bounds(x, y) == false) {
-    Serial.print(F("set_pixel outOfBound\n"));
+    Serial.print(F("set_pixel outOfBound"));
+    Serial.print(x);
+    Serial.print("x");
+    Serial.print(y);
+    Serial.print("\r\n");
     return;
   }
-  data[y * IMAGE_WIDTH + x] = value;
+
+  if (offset >= IMAGE_BUFFER) {
+    Serial.print(F("buffer out of index ["));
+    Serial.print(offset);
+    Serial.print(F("] : "));
+    Serial.print(x);
+    Serial.print("x");
+    Serial.print(y);
+    Serial.print("\r\n");
+    return;
+  }
+  if (value > 0) {
+    Serial.print(F("ON : "));
+    Serial.print(x);
+    Serial.print("x");
+    Serial.print(y);
+    Serial.print("\r\n");
+    return;
+  }
+
+  data[offset] = value;
 }
 
 void Image::set_pixel(int x, int y, byte value) {

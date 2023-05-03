@@ -59,16 +59,18 @@ void receiveUDP() {
       }
     }
     Serial.print(", port ");
-    Serial.println(Udp.remotePort());
+    Serial.print(Udp.remotePort());
     someOneIsConnected = true;
     if (packetSize < ((int) PACKET_LENGTH) ) {
       // read the packet into packetBufffer
       Udp.read(packetBuffer, UDP_TX_PACKET_MAX_SIZE);
     }
+    Serial.println("");
 
     if (packetSize == PACKET_LENGTH) {
       auto brightness = packetBuffer[0];
-      //OCR5A = brightness;
+      //TODO OCR5A = brightness;
+      image.clear_pixels();
       int offset = 0;
       for(int i = 0; i < PACKET_LENGTH; i++){
         uint8_t value = packetBuffer[i];
@@ -100,6 +102,7 @@ void receiveUDP() {
       }
 
     } else {
+      Serial.println(F("Wrong size"));
       sprintf(ReplyBuffer, "Wrong packet size %d", packetSize);
       // send a reply to the IP address and port that sent us the packet we received
       Udp.beginPacket(Udp.remoteIP(), Udp.remotePort());
@@ -184,11 +187,11 @@ void loop() {
     delay(10);
     if (someOneIsConnected == false) {
         default_image(&image);
-        panel1.send_image(&image);
-        panel2.send_image(&image);
-        panel3.send_image(&image);
-        panel4.send_image(&image);
-        panel5.send_image(&image);
-      Serial.println(F(".\n"));
+      Serial.print(F("."));
     }
+    panel1.send_image(&image);
+    panel2.send_image(&image);
+    panel3.send_image(&image);
+    panel4.send_image(&image);
+    panel5.send_image(&image);
 }

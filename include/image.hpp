@@ -10,6 +10,8 @@
 #define IMAGE_WIDTH (PANEL_WIDTH * MAXIMUM_PANELSIZE)
 #define IMAGE_HEIGHT PANEL_HEIGHT
 
+#define IMAGE_BUFFER (IMAGE_WIDTH * IMAGE_HEIGHT)
+
 class Image
 {
   public:
@@ -21,7 +23,7 @@ class Image
   private:
     bool check_bounds(int x, int y);
 
-    uint8_t data[IMAGE_WIDTH * IMAGE_HEIGHT];
+    uint8_t data[IMAGE_BUFFER];
 
 };
 
