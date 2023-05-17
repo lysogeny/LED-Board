@@ -43,14 +43,6 @@ void Image::set_pixel_offset(int offset, byte value) {
     Serial.print("\r\n");
     return;
   }
-  if (value > 0) {
-    Serial.print(F("ON : "));
-    Serial.print(x);
-    Serial.print("x");
-    Serial.print(y);
-    Serial.print("\r\n");
-    return;
-  }
 
   data[offset] = value;
 }

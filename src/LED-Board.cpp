@@ -61,7 +61,7 @@ void receiveUDP() {
     Serial.print(", port ");
     Serial.print(Udp.remotePort());
     someOneIsConnected = true;
-    if (packetSize < ((int) PACKET_LENGTH) ) {
+    if (packetSize <= ((int) PACKET_LENGTH) ) {
       // read the packet into packetBufffer
       Udp.read(packetBuffer, packetSize);
     }
@@ -69,36 +69,35 @@ void receiveUDP() {
 
     if (packetSize == PACKET_LENGTH) {
       /* first byte describe the brightness */
-      auto brightness = packetBuffer[0];
-      //TODO OCR5A = brightness;
+      uint8_t brightness = packetBuffer[0];
+      OCR5A = brightness;
       image.clear_pixels();
       int offset = 0;
       /* second byte has the first LEDs*/
       for(int i = 1; i < packetSize; i++){
         uint8_t value = packetBuffer[i];
-        
-        uint8_t a = (value & 0x1) > 0 ? 1 : 0;
+        uint8_t a = (value & 0x1) ? 1 : 0;
         image.set_pixel_offset(offset, a);
         offset++;
-        uint8_t b = ((value & 0x2) > 0) ? 1 : 0;
+        uint8_t b = (value & 0x2) ? 1 : 0;
         image.set_pixel_offset(offset, b);
         offset++;
-        uint8_t c = ((value & 0x4) > 0) ? 1 : 0;
+        uint8_t c = (value & 0x4) ? 1 : 0;
         image.set_pixel_offset(offset, c);
         offset++;
-        uint8_t d = ((value & 0x8) > 0) ? 1 : 0;
+        uint8_t d = (value & 0x8) ? 1 : 0;
         image.set_pixel_offset(offset, d);
         offset++;
-        uint8_t e = ((value & 0x10) > 0) ? 1 : 0;
+        uint8_t e = (value & 0x10) ? 1 : 0;
         image.set_pixel_offset(offset, e);
         offset++;
-        uint8_t f = ((value & 0x20) > 0) ? 1 : 0;
+        uint8_t f = (value & 0x20) ? 1 : 0;
         image.set_pixel_offset(offset, f);
         offset++;
-        uint8_t g = ((value & 0x40) > 0) ? 1 : 0;
+        uint8_t g = (value & 0x40) ? 1 : 0;
         image.set_pixel_offset(offset, g);
         offset++;
-        uint8_t h = ((value & 0x80) > 0) ? 1 : 0;
+        uint8_t h = (value & 0x80) ? 1 : 0;
         image.set_pixel_offset(offset, h);
         offset++;
       }
@@ -120,7 +119,7 @@ void setup() {
 
     //digitalWrite(46,1);
     TCCR5A |= (1 << COM5A1);//pwm mode 8 bit
-    OCR5A = 255;
+    OCR5A = 40;
     TCCR5B = TCCR5B & B11111000 | B00000001; 
 
     panel1.init();
@@ -128,8 +127,8 @@ void setup() {
     panel3.init();
     panel4.init();
     panel5.init();
-    Serial.print(F("Activate all LEDs\r\n"));
-    for (int x = 0; x < IMAGE_WIDTH; x++) {
+    Serial.print(F("Activate first LEDs\r\n"));
+    for (int x = 0; x < PANEL_WIDTH; x++) {
       for (int y = 0; y < IMAGE_HEIGHT; y++) {
         image.set_pixel(x, y, 1);
       }
@@ -155,6 +154,17 @@ void setup() {
       delay(1);
     }
   }
+  Serial.print(F("Activate second LED panel\r\n"));
+    for (int x = PANEL_WIDTH; x < PANEL_WIDTH*2; x++) {
+      for (int y = 0; y < IMAGE_HEIGHT; y++) {
+        image.set_pixel(x, y, 1);
+      }
+    }
+    panel1.send_image(&image);
+    panel2.send_image(&image);
+    panel3.send_image(&image);
+    panel4.send_image(&image);
+    panel5.send_image(&image);
   Serial.print(F("My IP address: "));
   Serial.println(Ethernet.localIP());
 
