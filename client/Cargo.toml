@@ -8,3 +8,4 @@ edition = "2021"
 [dependencies]
 bit = "0.1.1"
 embedded-graphics = "0.8.0"
+openweathermap = "0.2.4"
