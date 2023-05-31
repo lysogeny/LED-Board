@@ -105,6 +105,12 @@ impl DrawTarget for UdpDisplay {
     }
 }
 
+fn renderWeatherIcon(display: &mut UdpDisplay, icon: &[u8]){
+    let icon_image = Bmp::from_slice(icon).unwrap();
+    Image::new(&icon_image, Point::new((IMAGE_WIDTH-40) as i32, 0)).draw(display).unwrap();
+
+}
+
 fn renderWeather(display: &mut UdpDisplay ,data: &Option<Result<CurrentWeather, String>>){
     let text_style = MonoTextStyle::new(&FONT_6X10, BinaryColor::On);
 
@@ -125,10 +131,31 @@ fn renderWeather(display: &mut UdpDisplay ,data: &Option<Result<CurrentWeather, 
 
                     match short_icon_code {
                         "01" => {
-                            let sun_icon = include_bytes!("sun.bmp");
-                            let sun_icon_image = Bmp::from_slice(sun_icon).unwrap();
-                            Image::new(&sun_icon_image, Point::new((IMAGE_WIDTH-40) as i32, 0)).draw(display).unwrap();
-                        
+                            renderWeatherIcon(display, include_bytes!("sun.bmp"));                           
+                        },
+                        "02" => {
+                            renderWeatherIcon(display, include_bytes!("few_clouds.bmp"));
+                        },
+                        "03" => {
+                            renderWeatherIcon(display, include_bytes!("scattered_clouds.bmp"));
+                        },
+                        "04" => {
+                            renderWeatherIcon(display, include_bytes!("broken_clouds.bmp"));
+                        },
+                        "09" => {
+                            renderWeatherIcon(display, include_bytes!("shower.bmp"));
+                        },
+                        "10" => {
+                            renderWeatherIcon(display, include_bytes!("rain.bmp"));
+                        },
+                        "11" => {
+                            renderWeatherIcon(display, include_bytes!("thunderstorm.bmp"));
+                        },
+                        "13" => {
+                            renderWeatherIcon(display, include_bytes!("snow.bmp"));
+                        },
+                        "50" => {
+                            renderWeatherIcon(display, include_bytes!("mist.bmp"));
                         },
                         _ => {
                             println!("Missing icon for {short_icon_code}");
@@ -167,11 +194,9 @@ fn send_package(ipaddress: String, data: &Option<Result<CurrentWeather, String>>
    //     .into_styled(PRIMITIVE_STYLE)
    //     .draw(&mut display)
    //     .unwrap();
-
-    
     renderWeather(&mut display, data);                   
 
-   
+
 
     package[1..PACKAGE_LENGTH].copy_from_slice(&display.image);
 
