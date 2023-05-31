@@ -1,4 +1,6 @@
 use bit::BitIndex;
+use substring::Substring;
+use tinybmp::Bmp;
 use core::time;
 use embedded_graphics::{
     image::{Image, ImageRaw},
@@ -8,7 +10,7 @@ use embedded_graphics::{
     primitives::{Line, PrimitiveStyle},
     text::Text,
 };
-use openweathermap::{self, CurrentWeather};
+use openweathermap::{self, CurrentWeather, Weather};
 use std::net::UdpSocket;
 use std::{env, sync::mpsc::Receiver, thread};
 
@@ -20,6 +22,11 @@ const IMAGE_HEIGHT: u32 = 40;
 const IMAGE_HEIGHT_BYTE: u32 = 40;
 const IMAGE_LENGTH: usize = (IMAGE_WIDTH_BYTE * IMAGE_HEIGHT_BYTE) as usize;
 const PACKAGE_LENGTH: usize = (IMAGE_LENGTH + 1) as usize;
+
+const PRIMITIVE_STYLE:PrimitiveStyle<BinaryColor> = PrimitiveStyle::with_stroke(BinaryColor::On, 1);
+
+
+
 
 struct UdpDisplay {
     image: [u8; IMAGE_SIZE_BYTE],
@@ -98,6 +105,53 @@ impl DrawTarget for UdpDisplay {
     }
 }
 
+fn renderWeather(display: &mut UdpDisplay ,data: &Option<Result<CurrentWeather, String>>){
+    let text_style = MonoTextStyle::new(&FONT_6X10, BinaryColor::On);
+
+    match data {
+        Some(v) => match v {
+            Err(error) => {
+                Text::new(&error, Point::new(0, 5), text_style)
+                    .draw(display)
+                    .unwrap();
+                println!("{}", &error);
+            }
+            Ok(result) => {
+                if(!result.weather.is_empty()){
+                    let condition = &result.weather[0];
+                    let short_icon_code = condition.icon.substring(0,2);
+                    
+                    println!("Weather info: {} desc: {} icon {}", condition.main, condition.description, condition.icon);
+
+                    match short_icon_code {
+                        "01" => {
+                            let sun_icon = include_bytes!("sun.bmp");
+                            let sun_icon_image = Bmp::from_slice(sun_icon).unwrap();
+                            Image::new(&sun_icon_image, Point::new((IMAGE_WIDTH-40) as i32, 0)).draw(display).unwrap();
+                        
+                        },
+                        _ => {
+                            println!("Missing icon for {short_icon_code}");
+                            Text::new(&condition.description, Point::new(0, 0), text_style)
+                                .draw(display)
+                                .unwrap();
+                        }
+                    }          
+                }
+            }
+        },
+        None => {
+            Text::new("Waiting for data", Point::new(0, 0), text_style)
+                .draw(display)
+                .unwrap();
+            println!("{}", "no result");
+        }
+    }
+
+
+
+}
+
 fn send_package(ipaddress: String, data: &Option<Result<CurrentWeather, String>>) {
     let mut package: [u8; PACKAGE_LENGTH] = [0; PACKAGE_LENGTH];
 
@@ -108,43 +162,16 @@ fn send_package(ipaddress: String, data: &Option<Result<CurrentWeather, String>>
         image: [0; IMAGE_SIZE_BYTE],
     };
 
-    let style = PrimitiveStyle::with_stroke(BinaryColor::On, 1);
-    let text_style = MonoTextStyle::new(&FONT_6X10, BinaryColor::On);
 
-    Line::new(Point::new(0, 0), Point::new((IMAGE_WIDTH - 1) as i32, 0))
-        .into_styled(style)
-        .draw(&mut display)
-        .unwrap();
+   // Line::new(Point::new(0, 0), Point::new((IMAGE_WIDTH - 1) as i32, 0))
+   //     .into_styled(PRIMITIVE_STYLE)
+   //     .draw(&mut display)
+   //     .unwrap();
 
     
-    match data {
-        Some(v) => match v {
-            Err(error) => {
-                Text::new(&error, Point::new(0, 5), text_style)
-                    .draw(&mut display)
-                    .unwrap();
-                println!("{}", &error);
-            }
-            Ok(result) => {
-                let mut y = 10;
-                for condition in result.weather.as_slice() {
+    renderWeather(&mut display, data);                   
 
-                    let text = condition.main.to_owned() + " " +  &condition.description + " " + &condition.icon;
-                    Text::new(&text, Point::new(0, y), text_style)
-                        .draw(&mut display)
-                        .unwrap();
-                    println!("{}", &condition.main);
-                    y += 10;
-                }
-            }
-        },
-        None => {
-            Text::new("Waiting for data", Point::new(20, 30), text_style)
-                .draw(&mut display)
-                .unwrap();
-            println!("{}", "no result");
-        }
-    }
+   
 
     package[1..PACKAGE_LENGTH].copy_from_slice(&display.image);
 
@@ -185,6 +212,8 @@ fn main() {
             );
 
             let mut lastData = Option::None;
+            
+
 
             loop {
                 let delay = time::Duration::from_millis(10000);
