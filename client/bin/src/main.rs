@@ -1,18 +1,24 @@
+
 use bit::BitIndex;
+use chrono_tz::Europe::Berlin;
+use chrono::{DateTime, NaiveDateTime, Utc, Timelike};
+use openweathermap::{forecast::{Weather, List}};
 use substring::Substring;
 use tinybmp::Bmp;
 use core::time;
 use embedded_graphics::{
-    image::{Image, ImageRaw},
+    image::{Image},
     mono_font::{iso_8859_1::FONT_6X10, MonoTextStyle},
-    pixelcolor::{BinaryColor, Rgb565},
+    pixelcolor::{BinaryColor},
     prelude::*,
-    primitives::{Line, PrimitiveStyle},
+    primitives::{PrimitiveStyle},
     text::Text,
 };
-use openweathermap::{self, CurrentWeather, Weather};
-use std::net::UdpSocket;
-use std::{env, sync::mpsc::Receiver, thread};
+
+use std::{net::UdpSocket, time::{Instant, Duration}};
+use std::{env, thread};
+
+use openweathermap::forecast::Forecast;
 
 const IMAGE_SIZE_BYTE: usize = (IMAGE_WIDTH_BYTE * IMAGE_HEIGHT) as usize; /* one byte contains 8 LEDs, one in each bit */
 const IMAGE_WIDTH: u32 = 5 * 32;
@@ -105,13 +111,8 @@ impl DrawTarget for UdpDisplay {
     }
 }
 
-fn renderWeatherIcon(display: &mut UdpDisplay, icon: &[u8]){
-    let icon_image = Bmp::from_slice(icon).unwrap();
-    Image::new(&icon_image, Point::new((IMAGE_WIDTH-40) as i32, 0)).draw(display).unwrap();
 
-}
-
-fn renderWeather(display: &mut UdpDisplay ,data: &Option<Result<CurrentWeather, String>>){
+fn renderWeather(display: &mut UdpDisplay ,data: &Option<Result<Forecast, String>>){
     let text_style = MonoTextStyle::new(&FONT_6X10, BinaryColor::On);
 
     match data {
@@ -123,47 +124,44 @@ fn renderWeather(display: &mut UdpDisplay ,data: &Option<Result<CurrentWeather, 
                 println!("{}", &error);
             }
             Ok(result) => {
-                if(!result.weather.is_empty()){
-                    let condition = &result.weather[0];
-                    let short_icon_code = condition.icon.substring(0,2);
+                if !result.list.is_empty() {
+                    let mut max:f64 = 0_f64;
+                    let mut best = &result.list[0];
+                    for forecast in &result.list {
+                        let time_s = forecast.dt;
+                        let local_time = NaiveDateTime::from_timestamp_millis(time_s*1000).unwrap();
+                        let zoned_time : DateTime<Utc> = DateTime::from_utc(local_time, Utc);
+                        let europe_time = zoned_time.with_timezone(&Berlin);
+                        
+                        let hour = europe_time.hour();
+                        let minute = europe_time.minute();
+
+                        let cur_time = DateTime::<Utc>::default();
+                        if(zoned_time > cur_time){
+                            println!("Skipping old result {hour}:{minute} @{time_s}");
+                        }
+
+                        match &forecast.rain {
+                            Some(x) => {
+                                let rain_v = x.three_hours;
+                                println!("Rain at {hour}:{minute} @{time_s} with {rain_v} prior best was {max}");
+                                if rain_v > max {
+                                    best = forecast;
+                                    max = rain_v;
+                                }
+                            },
+                            None    => println!("No rain at {hour}:{minute}"),
+                        }
+
+                        
+                    }
+                    
+                    let condition = best.weather[0].to_owned();
+                    
                     
                     println!("Weather info: {} desc: {} icon {}", condition.main, condition.description, condition.icon);
 
-                    match short_icon_code {
-                        "01" => {
-                            renderWeatherIcon(display, include_bytes!("sun.bmp"));                           
-                        },
-                        "02" => {
-                            renderWeatherIcon(display, include_bytes!("few_clouds.bmp"));
-                        },
-                        "03" => {
-                            renderWeatherIcon(display, include_bytes!("scattered_clouds.bmp"));
-                        },
-                        "04" => {
-                            renderWeatherIcon(display, include_bytes!("broken_clouds.bmp"));
-                        },
-                        "09" => {
-                            renderWeatherIcon(display, include_bytes!("shower.bmp"));
-                        },
-                        "10" => {
-                            renderWeatherIcon(display, include_bytes!("rain.bmp"));
-                        },
-                        "11" => {
-                            renderWeatherIcon(display, include_bytes!("thunderstorm.bmp"));
-                        },
-                        "13" => {
-                            renderWeatherIcon(display, include_bytes!("snow.bmp"));
-                        },
-                        "50" => {
-                            renderWeatherIcon(display, include_bytes!("mist.bmp"));
-                        },
-                        _ => {
-                            println!("Missing icon for {short_icon_code}");
-                            Text::new(&condition.description, Point::new(0, 0), text_style)
-                                .draw(display)
-                                .unwrap();
-                        }
-                    }          
+                    renderWeatherIcon(&condition, display);          
                 }
             }
         },
@@ -174,12 +172,52 @@ fn renderWeather(display: &mut UdpDisplay ,data: &Option<Result<CurrentWeather, 
             println!("{}", "no result");
         }
     }
-
-
-
 }
 
-fn send_package(ipaddress: String, data: &Option<Result<CurrentWeather, String>>) {
+
+fn renderWeatherIcon(condition: &Weather, display: &mut UdpDisplay ){
+    let text_style = MonoTextStyle::new(&FONT_6X10, BinaryColor::On);
+    let short_icon_code = condition.icon.substring(0,2);
+    let icon_image: Result<Bmp<BinaryColor>, tinybmp::ParseError> = match short_icon_code {
+        "01" => {
+            Bmp::from_slice(include_bytes!("sun.bmp"))
+        },
+        "02" => {
+            Bmp::from_slice(include_bytes!("few_clouds.bmp"))
+        },
+        "03" => {
+            Bmp::from_slice(include_bytes!("scattered_clouds.bmp"))
+        },
+        "04" => {
+            Bmp::from_slice(include_bytes!("broken_clouds.bmp"))
+        },
+        "09" => {
+            Bmp::from_slice(include_bytes!("shower.bmp"))
+        },
+        "10" => {
+            Bmp::from_slice(include_bytes!("rain.bmp"))
+        },
+        "11" => {
+            Bmp::from_slice(include_bytes!("thunderstorm.bmp"))
+        },
+        "13" => {
+            Bmp::from_slice(include_bytes!("snow.bmp"))
+        },
+        "50" => {
+            Bmp::from_slice(include_bytes!("mist.bmp"))
+        },
+        _ => {
+            println!("Missing icon for {short_icon_code}");
+            Text::new(&condition.description, Point::new(0, 0), text_style)
+                .draw(display)
+                .unwrap();
+            return;
+        }
+    };
+    Image::new(&icon_image.unwrap(), Point::new((IMAGE_WIDTH-40) as i32, 0)).draw(display).unwrap();
+}
+
+fn send_package(ipaddress: String, data: &Option<Result<Forecast, String>>) {
     let mut package: [u8; PACKAGE_LENGTH] = [0; PACKAGE_LENGTH];
 
     // Brightness
@@ -228,33 +266,31 @@ fn main() {
         // one argument passed
         2 => {
             let ip = &args[1];
-            let receiver = openweathermap::init(
-                "Mannheim",
-                "metric",
-                "de",
-                "978882ab9dd05e7122ff2b0aef2d3e55",
-                60,
-            );
+            let receiver = openweathermap::init_forecast("Mannheim",
+            "metric",
+            "de",
+            "978882ab9dd05e7122ff2b0aef2d3e55",
+            60,1);
 
-            let mut lastData = Option::None;
+            let mut last_data = Option::None;
             
 
 
             loop {
                 let delay = time::Duration::from_millis(10000);
                 thread::sleep(delay);
-                let answer = openweathermap::update(&receiver);
+                let answer = openweathermap::update_forecast(&receiver);
 
                 match answer {
                     Some(_) => {
-                        lastData = answer;
+                        last_data = answer;
                     }
                     None => {
 
                     }
                 }
 
-                send_package(ip.to_string(), &lastData);
+                send_package(ip.to_string(), &last_data);
             }
         }
         // all the other cases

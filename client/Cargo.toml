@@ -1,13 +1,7 @@
-[package]
-name = "LEDboardClient"
-version = "0.1.0"
-edition = "2021"
+[workspace]
+members = [
+    "openweathermap",
+    "bin"
+]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[dependencies]
-bit = "0.1.1"
-embedded-graphics = "0.8.0"
-openweathermap = "0.2.4"
-substring = "1.4.5"
-tinybmp = "0.5.0"
