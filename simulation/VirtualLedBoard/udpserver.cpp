@@ -4,23 +4,23 @@
 
 #define UDP_IMAGE_PORT  4242
 
-UdpServer::UdpServer(QObject *parent)
-    : QAbstractItemModel(parent)
+UdpLedServer ::UdpLedServer (QObject *parent)
+    : QObject(parent)
 {
     initSocket();
 }
 
-void UdpServer::initSocket()
+void UdpLedServer ::initSocket()
 {
     this->mUdpSocket = new QUdpSocket(this);
     this->mUdpSocket->bind(QHostAddress::LocalHost, UDP_IMAGE_PORT);
 
     connect(this->mUdpSocket, &QUdpSocket::readyRead,
-            this, &UdpServer::readPendingDatagrams);
+            this, &UdpLedServer ::readPendingDatagrams);
 }
 
 
-void UdpServer::readPendingDatagrams()
+void UdpLedServer ::readPendingDatagrams()
 {
     while (this->mUdpSocket->hasPendingDatagrams()) {
         QNetworkDatagram datagram = this->mUdpSocket->receiveDatagram();
@@ -28,7 +28,7 @@ void UdpServer::readPendingDatagrams()
     }
 }
 
-void UdpServer::processTheDatagram(QNetworkDatagram datagram) {
+void UdpLedServer::processTheDatagram(QNetworkDatagram datagram) {
     if (datagram.isValid()) {
         qDebug() << "Received datagram:" << datagram.data().size();
     }

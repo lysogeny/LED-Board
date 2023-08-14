@@ -4,12 +4,12 @@
 #include <QAbstractItemModel>
 #include <QUdpSocket>
 
-class UdpServer : public QAbstractItemModel
+class UdpLedServer : public QObject
 {
     Q_OBJECT
 
 public:
-    explicit UdpServer(QObject *parent = nullptr);
+    explicit UdpLedServer (QObject *parent = nullptr);
 
 
 private:
