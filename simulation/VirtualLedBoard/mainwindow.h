@@ -22,6 +22,10 @@ public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 
+public slots:
+    void setLED(uint8_t x, uint8_t y);
+    void updatePanel(void);
+
 private:
     Ui::MainWindow *ui;
     UdpLedServer *server;
