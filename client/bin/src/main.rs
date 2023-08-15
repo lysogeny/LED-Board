@@ -238,7 +238,7 @@ fn send_package(ipaddress: String, data: &Option<Result<Forecast, String>>) {
 
     package[1..PACKAGE_LENGTH].copy_from_slice(&display.image);
 
-    let socket = UdpSocket::bind("0.0.0.0:4242").expect("couldn't bind to address");
+    let socket = UdpSocket::bind("0.0.0.0:14242").expect("couldn't bind to address");
     socket
         .send_to(&package, ipaddress + ":4242")
         .expect("couldn't send data");
