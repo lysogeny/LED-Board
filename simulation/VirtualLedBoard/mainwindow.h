@@ -5,17 +5,7 @@
 #include <QImage>
 #include "udpserver.h"
 
-
-#define MAXIMUM_PANELSIZE 5
-#define PANEL_WIDTH 32
-#define PANEL_HEIGHT 40
-
-#define LED_DIAMETER 8
-#define LED_DISTANCE (LED_DIAMETER + 3)
-
-#define DEFAULT_WIDTH   (LED_DISTANCE * MAXIMUM_PANELSIZE * PANEL_WIDTH)
-#define DEFAULT_HEIGHT  (LED_DISTANCE * PANEL_HEIGHT)
-
+#include "settings.h"
 
 #define COLOR_BACKGROUND    Qt::black
 #define COLOR_FOREGROUND    QColor(255, 127, 0, 255)

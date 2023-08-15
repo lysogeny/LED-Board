@@ -16,6 +16,7 @@ SOURCES += \
 
 HEADERS += \
     mainwindow.h \
+    settings.h \
     udpserver.h
 
 FORMS += \

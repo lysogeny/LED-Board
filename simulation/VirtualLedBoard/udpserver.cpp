@@ -1,4 +1,5 @@
 #include "udpserver.h"
+#include "settings.h"
 #include <QUdpSocket>
 #include <QNetworkDatagram>
 
@@ -29,7 +30,7 @@ void UdpLedServer ::readPendingDatagrams()
 }
 
 void UdpLedServer::processTheDatagram(QNetworkDatagram datagram) {
-    if (datagram.isValid()) {
+    if (datagram.isValid() && datagram.data().length() == PACKET_LENGTH) {
         qDebug() << "Received datagram:" << datagram.data().size();
     }
 }
