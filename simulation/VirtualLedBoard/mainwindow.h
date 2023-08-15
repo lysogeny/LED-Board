@@ -37,5 +37,6 @@ private:
     UdpLedServer *server;
     QImage       *mOffscreenPanel;
     void drawImage(QImage *image);
+    void renderPanel(void);
 };
 #endif // MAINWINDOW_H
