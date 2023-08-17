@@ -11,15 +11,8 @@ MainWindow::MainWindow(QWidget *parent)
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
-    this->server = new UdpLedServer ();
-
     this->mOffscreenPanel = new QImage(DEFAULT_WIDTH + LED_DISTANCE, DEFAULT_HEIGHT + LED_DISTANCE, QImage::Format_RGB32);
-    for(int x=0; x < (PANEL_WIDTH * MAXIMUM_PANELSIZE); x++) {
-        for(int y=0; y < PANEL_HEIGHT; y++) {
-            setLED(x, y);
-        }
-    }
-    updatePanel();
+    this->server = new UdpLedServer (NULL, this);
 }
 
 MainWindow::~MainWindow()

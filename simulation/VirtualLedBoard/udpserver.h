@@ -3,13 +3,17 @@
 
 #include <QAbstractItemModel>
 #include <QUdpSocket>
+#include "mainwindow.h"
+
+class MainWindow;
 
 class UdpLedServer : public QObject
 {
     Q_OBJECT
 
 public:
-    explicit UdpLedServer (QObject *parent = nullptr);
+    /*UdpLedServer (QObject *parent = nullptr); */
+    UdpLedServer (QObject *parent = nullptr, MainWindow *window = nullptr);
 
 private:
     void initSocket();

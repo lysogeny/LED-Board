@@ -14,6 +14,9 @@ QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
 QT_END_NAMESPACE
 
+/* dummy */
+class UdpLedServer;
+
 class MainWindow : public QMainWindow
 {
     Q_OBJECT

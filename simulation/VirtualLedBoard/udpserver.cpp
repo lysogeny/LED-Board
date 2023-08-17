@@ -6,18 +6,26 @@
 
 #define UDP_IMAGE_PORT  4242
 
-UdpLedServer ::UdpLedServer (QObject *parent)
+UdpLedServer::UdpLedServer (QObject *parent, MainWindow *window)
     : QObject(parent)
 {
     initSocket();
     connect(this,
             &UdpLedServer::changeLEDstate,
-            (MainWindow*) parent,
+            window,
             &MainWindow::setLED);
     connect(this,
             &UdpLedServer::updatePanelContent,
-            (MainWindow*) parent,
+            window,
             &MainWindow::updatePanel);
+
+
+    for(int x=0; x < (PANEL_WIDTH * MAXIMUM_PANELSIZE); x++) {
+        for(int y=0; y < PANEL_HEIGHT; y++) {
+            changeLEDstate(x, y);
+        }
+    }
+    updatePanelContent();
 
 }
 
@@ -49,6 +57,7 @@ void UdpLedServer::processTheDatagram(QNetworkDatagram datagram) {
             for(int y=0; y < PANEL_HEIGHT; y++) {
                 if (datagram.data().at(currentIndex) & mask) {
                     this->changeLEDstate(x, y);
+                    qDebug() << x << "x" << y << " set";
                 }
                 mask = (mask << 1);
                 if (mask >= 256) {
