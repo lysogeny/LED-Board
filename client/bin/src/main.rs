@@ -19,6 +19,9 @@ use std::{net::UdpSocket, time::{Instant, Duration}};
 use std::{env, thread};
 
 use openweathermap::forecast::Forecast;
+// This declaration will look for a file named `straba.rs` and will
+// insert its contents inside a module named `straba` under this scope
+mod straba;
 
 const IMAGE_SIZE_BYTE: usize = (IMAGE_WIDTH_BYTE * IMAGE_HEIGHT) as usize; /* one byte contains 8 LEDs, one in each bit */
 const IMAGE_WIDTH: u32 = 5 * 32;
@@ -237,8 +240,8 @@ fn send_package(ipaddress: String, data: &Option<Result<Forecast, String>>) {
 
 
     package[1..PACKAGE_LENGTH].copy_from_slice(&display.image);
-
-    let socket = UdpSocket::bind("0.0.0.0:4242").expect("couldn't bind to address");
+    // client need to bind to client port (1 before 4242)
+    let socket = UdpSocket::bind("0.0.0.0:14242").expect("couldn't bind to address");
     socket
         .send_to(&package, ipaddress + ":4242")
         .expect("couldn't send data");
@@ -274,7 +277,8 @@ fn main() {
 
             let mut last_data = Option::None;
             
-
+            // Test Webcrawler for public transportataion
+            straba::fetchData();
 
             loop {
                 let delay = time::Duration::from_millis(10000);
