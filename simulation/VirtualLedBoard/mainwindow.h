@@ -3,6 +3,7 @@
 
 #include <QMainWindow>
 #include <QImage>
+#include <QGraphicsScene>
 #include "udpserver.h"
 
 #include "settings.h"
@@ -31,8 +32,9 @@ public slots:
 
 private:
     Ui::MainWindow *ui;
-    UdpLedServer *server;
-    QImage       *mOffscreenPanel;
+    UdpLedServer *server            = nullptr;
+    QImage       *mOffscreenPanel   = nullptr;
+    QGraphicsScene* mScene          = nullptr;
     void drawImage(QImage *image);
     void renderPanel(void);
 };

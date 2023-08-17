@@ -12,6 +12,7 @@ MainWindow::MainWindow(QWidget *parent)
 {
     ui->setupUi(this);
     this->mOffscreenPanel = new QImage(DEFAULT_WIDTH + LED_DISTANCE, DEFAULT_HEIGHT + LED_DISTANCE, QImage::Format_RGB32);
+    this->drawImage(this->mOffscreenPanel);
     this->server = new UdpLedServer (NULL, this);
 }
 
@@ -21,12 +22,10 @@ MainWindow::~MainWindow()
 }
 
 void MainWindow::drawImage(QImage *target) {
+    this->mScene=new QGraphicsScene() ;
     QGraphicsView *graphicsView = new QGraphicsView();
     graphicsView->setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
-    QGraphicsScene* scene=new QGraphicsScene() ;
-    graphicsView->setScene(scene);
-    QGraphicsPixmapItem* item = new QGraphicsPixmapItem(QPixmap::fromImage(*(target)));
-    scene->addItem(item);
+    graphicsView->setScene(this->mScene);
     graphicsView->show();
     this->ui->ledPanel->addWidget(graphicsView);
 }
@@ -42,7 +41,10 @@ void MainWindow::setLED(uint8_t x, uint8_t y) {
 }
 
 void MainWindow::updatePanel(void) {
-    this->drawImage(this->mOffscreenPanel);
+
+    QGraphicsPixmapItem* item = new QGraphicsPixmapItem(QPixmap::fromImage(*(this->mOffscreenPanel)));
+    this->mScene->clear();
+    mScene->addItem(item);
     this->renderPanel();
 }
 

@@ -53,8 +53,8 @@ void UdpLedServer::processTheDatagram(QNetworkDatagram datagram) {
         int currentIndex = PACKET_INDEX_PANEL0;
 
         uint16_t mask = 1;
-        for(int x=0; x < (PANEL_WIDTH * MAXIMUM_PANELSIZE); x++) {
-            for(int y=0; y < PANEL_HEIGHT; y++) {
+        for(int y=0; y < PANEL_HEIGHT; y++) {
+            for(int x=0; x < (PANEL_WIDTH * MAXIMUM_PANELSIZE); x++) {
                 if (datagram.data().at(currentIndex) & mask) {
                     this->changeLEDstate(x, y);
                     qDebug() << x << "x" << y << " set";
