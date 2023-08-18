@@ -1,3 +1,5 @@
+use chrono::{Utc, DateTime, NaiveDateTime, Timelike};
+use chrono_tz::Europe::Berlin;
 /* @file straba.rs
  * @brief fetch next depature of light rail vehicle
  */
@@ -44,7 +46,7 @@ pub struct NextDeparture {
     pub schoenau: i64,
 }
 
-pub fn fetch_data() -> Option<String> {
+pub fn fetch_data() -> Option<&'static str> {
     let result = reqwest::blocking::get(STATION_URL);
     println!("Start Straba Crawler");
 
@@ -66,7 +68,27 @@ pub fn fetch_data() -> Option<String> {
         return Option::None;
     }
 
+    let cur_time = DateTime::<Utc>::default();
+
+    // parse JSON result.. serach of both directions
     let json = body.unwrap();
-    let tmp = (json.journeys[0].destination).to_string();
-    Some(tmp)
+    for journey in (json.journeys) {
+        let destination = (journey.destination).to_string();
+        let departure = (journey.realtime_departure);
+        let difference = (journey.difference);
+
+        if (departure.is_some()) {
+            // get current time
+            let time_s = departure.unwrap();
+            let local_time = NaiveDateTime::from_timestamp_millis(time_s*1000).unwrap();
+            let zoned_time : DateTime<Utc> = DateTime::from_utc(local_time, Utc);
+            let europe_time = zoned_time.with_timezone(&Berlin);
+            
+            let hour = europe_time.hour();
+            let minute = europe_time.minute();
+            println!("{0} {1}:{2}", destination, hour, minute);
+        }
+    }
+
+    Some("")
 }
