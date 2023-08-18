@@ -1,10 +1,10 @@
 /* @file straba.rs
  * @brief fetch next depature of light rail vehicle
  */
-use std::error::Error;
 use serde::Deserialize;
+use serde_json::Value;
 
-const stationURL:&str = "https://www.rnv-online.de/rest/departure/2494";
+const STATION_URL:&str = "https://www.rnv-online.de/rest/departure/2494";
 
 #[derive(Default, Debug, Clone, PartialEq, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -20,9 +20,9 @@ pub struct Station {
 pub struct Line {
     pub id: i64,
     pub text: String,
-    pub iconOutlined: i64,
-    pub iconColor: String,
-    pub iconTextColor: i64,
+    pub icon_outlined: i64,
+    pub icon_color: String,
+    pub icon_text_color: i64,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Deserialize)]
@@ -30,10 +30,10 @@ pub struct Line {
 pub struct Journey {
     pub line: Line,
     pub destination: String,
-    pub barrierLevel: String,
-    pub loadsForecastType: String,
-    pub realtimeDeparture: i64,
-    pub scheduledDeparture: i64,
+    pub barrier_level: String,
+    pub loads_forecast_type: String,
+    pub realtime_departure: i64,
+    pub scheduled_departure: i64,
     pub difference: i64,
     pub canceled: bool,
 }
@@ -44,20 +44,28 @@ pub struct NextDeparture {
 }
 
 
-pub fn fetchData() -> Result<String, reqwest::Error> {
-    let result = reqwest::blocking::get(stationURL);
+pub fn fetch_data() -> Option<String> {
+    let result = reqwest::blocking::get(STATION_URL);
 
-    let response = match result {
-        Ok(res) => res,
-        Err(err) => return reqwest::Error(err),
-    };
+    if result.is_err() {
+        println!("Could not read station response {:?}", result.err());  
+        return Option::None;
+    }
+    let text = result.unwrap().text();
+    if text.is_err() {
+        println!("Could not convert response {:?}", text.err());  
+        return Option::None;
+    }
 
-    let body = serde_json::from_str(&text);
 
-    let json = match body {
-        Ok(json) => json,
-        Err(err) => return reqwest::Error(err),
-    };
+    let body: std::result::Result<Value, serde_json::Error> = serde_json::from_str(&text.unwrap());
+
+    if body.is_err() {
+        println!("Could not parse json {:?}", body.err());  
+        return Option::None;
+    }
+
+    let json = body.unwrap();
     let date = json["id"].to_string();
-    Ok(date)
+    Some(date)
 }
