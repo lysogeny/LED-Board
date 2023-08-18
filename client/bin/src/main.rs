@@ -278,7 +278,8 @@ fn main() {
             let mut last_data = Option::None;
             
             // Test Webcrawler for public transportataion
-            straba::fetch_data();
+            let name = straba::fetch_data();
+            println!("Name: {:?}", name); 
 
             loop {
                 let delay = time::Duration::from_millis(10000);
