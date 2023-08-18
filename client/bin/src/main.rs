@@ -2,20 +2,20 @@
 use bit::BitIndex;
 use chrono_tz::Europe::Berlin;
 use chrono::{DateTime, NaiveDateTime, Utc, Timelike};
-use openweathermap::{forecast::{Weather, List}};
+use openweathermap::forecast::Weather;
 use substring::Substring;
 use tinybmp::Bmp;
 use core::time;
 use embedded_graphics::{
-    image::{Image},
+    image::Image,
     mono_font::{iso_8859_1::FONT_6X10, MonoTextStyle},
-    pixelcolor::{BinaryColor},
+    pixelcolor::BinaryColor,
     prelude::*,
-    primitives::{PrimitiveStyle},
+    primitives::PrimitiveStyle,
     text::Text,
 };
 
-use std::{net::UdpSocket, time::{Instant, Duration}};
+use std::net::UdpSocket;
 use std::{env, thread};
 
 use openweathermap::forecast::Forecast;
@@ -115,7 +115,7 @@ impl DrawTarget for UdpDisplay {
 }
 
 
-fn renderWeather(display: &mut UdpDisplay ,data: &Option<Result<Forecast, String>>){
+fn render_weather(display: &mut UdpDisplay ,data: &Option<Result<Forecast, String>>){
     let text_style = MonoTextStyle::new(&FONT_6X10, BinaryColor::On);
 
     match data {
@@ -140,7 +140,7 @@ fn renderWeather(display: &mut UdpDisplay ,data: &Option<Result<Forecast, String
                         let minute = europe_time.minute();
 
                         let cur_time = DateTime::<Utc>::default();
-                        if(zoned_time > cur_time){
+                        if zoned_time > cur_time {
                             println!("Skipping old result {hour}:{minute} @{time_s}");
                         }
 
@@ -164,7 +164,7 @@ fn renderWeather(display: &mut UdpDisplay ,data: &Option<Result<Forecast, String
                     
                     println!("Weather info: {} desc: {} icon {}", condition.main, condition.description, condition.icon);
 
-                    renderWeatherIcon(&condition, display);          
+                    render_weather_icon(&condition, display);          
                 }
             }
         },
@@ -178,7 +178,7 @@ fn renderWeather(display: &mut UdpDisplay ,data: &Option<Result<Forecast, String
 }
 
 
-fn renderWeatherIcon(condition: &Weather, display: &mut UdpDisplay ){
+fn render_weather_icon(condition: &Weather, display: &mut UdpDisplay ){
     let text_style = MonoTextStyle::new(&FONT_6X10, BinaryColor::On);
     let short_icon_code = condition.icon.substring(0,2);
     let icon_image: Result<Bmp<BinaryColor>, tinybmp::ParseError> = match short_icon_code {
@@ -235,7 +235,7 @@ fn send_package(ipaddress: String, data: &Option<Result<Forecast, String>>) {
    //     .into_styled(PRIMITIVE_STYLE)
    //     .draw(&mut display)
    //     .unwrap();
-    renderWeather(&mut display, data);                   
+    render_weather(&mut display, data);                   
 
 
 
@@ -278,7 +278,7 @@ fn main() {
             let mut last_data = Option::None;
             
             // Test Webcrawler for public transportataion
-            straba::fetchData();
+            straba::fetch_data();
 
             loop {
                 let delay = time::Duration::from_millis(10000);
