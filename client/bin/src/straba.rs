@@ -14,17 +14,33 @@ const STATION_URL:&str = "https://www.rnv-online.de/rest/departure/2494";
 pub struct Station {
     pub id: String,
     pub name: String,
-    pub journeys: Vec<Journey>,
+    pub graphQL: GraphQL,
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GraphQL {
+    pub response: GraphQLResponse,
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GraphQLResponse {
+    pub name: String,
+    pub journeys: Vec<JourneyElements>,
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct JourneyElements {
+    #[serde(untagged)]
+    pub elements: Vec<JourneyElements>,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Line {
     pub id: String,
-    pub text: String,
-    pub icon_outlined: i64,
-    pub icon_color: String,
-    pub icon_text_color: i64,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Deserialize)]
@@ -72,7 +88,7 @@ pub fn fetch_data() -> Option<&'static str> {
 
     // parse JSON result.. serach of both directions
     let json = body.unwrap();
-    for journey in (json.journeys) {
+    for journey in (json.graphQL.response.journeys) {
         let destination = (journey.destination).to_string();
         let departure = (journey.realtime_departure);
         let difference = (journey.difference);
@@ -86,6 +102,9 @@ pub fn fetch_data() -> Option<&'static str> {
             
             let hour = europe_time.hour();
             let minute = europe_time.minute();
+            if (zoned_time > cur_time) {
+                println!("------------- Future starts here ----------------");    
+            }
             println!("{0} {1}:{2}", destination, hour, minute);
         }
     }
