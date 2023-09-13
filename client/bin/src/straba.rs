@@ -27,35 +27,43 @@ pub struct GraphQL {
 #[serde(rename_all = "camelCase")]
 pub struct GraphQLResponse {
     pub name: String,
-    pub journeys: Vec<JourneyElements>,
+    pub journeys: JourneysElement,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct JourneyElements {
-    #[serde(untagged)]
-    pub elements: Vec<JourneyElements>,
+pub struct JourneysElement {
+    pub elements: Vec<Journey>,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Line {
-    pub id: String,
+    pub lineGroup: LineGroup,
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LineGroup {
+    pub label: String,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Journey {
     pub line: Line,
-    pub destination: String,
-    pub barrier_level: String,
-    pub loads_forecast_type: String,
-    pub realtime_departure: Option<i64>,
-    pub scheduled_departure: i64,
-    pub difference: Option<i64>,
     pub canceled: bool,
+    pub stops: Vec<StopsElement>,
 }
 
+#[derive(Default, Debug, Clone, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StopsElement {
+    pub destinationLabel: String,
+    //FIXME is in sub-structure: pub realtime_departure: Option<i64>,
+    //FIXME is in sub-structure: pub scheduled_departure: i64,
+    //TODO    pub difference: Option<i64>,
+}
 // Return value
 pub struct NextDeparture {
     pub rheinau: i64,
@@ -75,9 +83,10 @@ pub fn fetch_data() -> Option<&'static str> {
         println!("Could not convert response {:?}", text.err());
         return Option::None;
     }
+    let rawText = &text.unwrap();
+    println!("{}", &rawText);
 
-
-    let body: std::result::Result<Station, serde_json::Error> = serde_json::from_str(&text.unwrap());
+    let body: std::result::Result<Station, serde_json::Error> = serde_json::from_str(&rawText);
 
     if body.is_err() {
         println!("Could not parse json {:?}", body.err());  
@@ -86,14 +95,15 @@ pub fn fetch_data() -> Option<&'static str> {
 
     let cur_time = DateTime::<Utc>::default();
 
-    // parse JSON result.. serach of both directions
+    // parse JSON result.. search of both directions
     let json = body.unwrap();
-    for journey in (json.graphQL.response.journeys) {
-        let destination = (journey.destination).to_string();
-        let departure = (journey.realtime_departure);
-        let difference = (journey.difference);
+    for el in (json.graphQL.response.journeys.elements) {
+        //TODO:
+        /*let destination = (el.destination).to_string();
+        let departure   = el.realtime_departure;
+        let difference  = el.difference;
 
-        if (departure.is_some()) {
+        if departure.is_some() {
             // get current time
             let time_s = departure.unwrap();
             let local_time = NaiveDateTime::from_timestamp_millis(time_s*1000).unwrap();
@@ -102,11 +112,11 @@ pub fn fetch_data() -> Option<&'static str> {
             
             let hour = europe_time.hour();
             let minute = europe_time.minute();
-            if (zoned_time > cur_time) {
+            if zoned_time > cur_time {
                 println!("------------- Future starts here ----------------");    
             }
             println!("{0} {1}:{2}", destination, hour, minute);
-        }
+        }*/
     }
 
     Some("")
