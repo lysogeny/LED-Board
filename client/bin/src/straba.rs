@@ -74,16 +74,20 @@ pub struct IsoStringDateTime {
 
 // Return value
 pub struct NextDeparture {
-    pub rheinau: String,
-    pub schoenau: String,
+    pub outbound_station: String,
+    pub outbound_diff: i64,
+    pub inbound_station: String,
+    pub inbound_diff: i64,
     pub failure: bool,
 }
 
 pub fn fetch_data() -> NextDeparture {
     let mut returnValue = NextDeparture {
         failure  : false,
-        rheinau  : String::from(""),
-        schoenau : String::from(""),
+        outbound_station  : String::from(""),
+        outbound_diff : -10000,
+        inbound_station : String::from(""),
+        inbound_diff : -10000,
     };
 
     let st_now = SystemTime::now();
@@ -128,13 +132,21 @@ pub fn fetch_data() -> NextDeparture {
         for stop in el.stops {
             if stop.realtimeDeparture.isoString.is_some() {
                 let txt_departure = stop.realtimeDeparture.isoString.unwrap();
-                let next_departure = DateTime::parse_from_rfc3339(&txt_departure);
+                let next_departure = DateTime::parse_from_rfc3339(&txt_departure).unwrap();
+                
+                let diff = next_departure.timestamp() - (seconds  as i64);
                 println!("To      {:} {:}", stop.destinationLabel, txt_departure);
-                if returnValue.rheinau == "" {
+                if returnValue.outbound_station == "" {
                     if stop.destinationLabel.contains("Rheinau") {
-                        returnValue.rheinau = txt_departure;
-                    } else if returnValue.schoenau == "" {
-                        returnValue.schoenau = txt_departure;
+                        returnValue.outbound_station = stop.destinationLabel;
+                        returnValue.outbound_diff = diff;
+                    } else if stop.destinationLabel.contains("Hochschule") ||
+                                stop.destinationLabel.contains("Hauptbahnhof") ||
+                                stop.destinationLabel.contains("nau") { // Schönau
+                        if returnValue.inbound_station == "" {
+                            returnValue.inbound_station = stop.destinationLabel;
+                            returnValue.inbound_diff = diff;
+                        }
                     }
                 }
             } else {

@@ -242,8 +242,12 @@ fn send_package(ipaddress: String,
 
     if strabaRes.failure == false {
         let text_style = MonoTextStyle::new(&FONT_6X10, BinaryColor::On);
-        let outbound = &format!("{}: {}", "Rheinau", strabaRes.rheinau);
+        let outbound = &format!("{}: {}min", strabaRes.outbound_station, (strabaRes.outbound_diff / 60));
         Text::new(outbound, Point::new(0, 15), text_style)
+                .draw(&mut display)
+                .unwrap();
+        let inbound = &format!("{}: {}min", strabaRes.inbound_station, (strabaRes.inbound_diff / 60));
+        Text::new(inbound, Point::new(0, 30), text_style)
                 .draw(&mut display)
                 .unwrap();
     }
@@ -288,8 +292,8 @@ fn main() {
             
             // Test Webcrawler for public transportataion
             let strabaRes = straba::fetch_data();
-            println!("Rheinau: {:?}", strabaRes.rheinau);
-            println!("Schönau: {:?}", strabaRes.schoenau);
+            println!("{:?} {:?}s", strabaRes.outbound_station, strabaRes.outbound_diff);
+            println!("{:?} {:?}s", strabaRes.inbound_station , strabaRes.inbound_diff);
 
             loop {
                 let delay = time::Duration::from_millis(10000);
