@@ -1,5 +1,7 @@
-use chrono::{Utc, DateTime, NaiveDateTime, Timelike};
+use chrono::{Utc, DateTime};
+use std::time::{SystemTime, Duration, UNIX_EPOCH};
 use chrono_tz::Europe::Berlin;
+
 /* @file straba.rs
  * @brief fetch next depature of light rail vehicle
  */
@@ -77,7 +79,15 @@ pub struct NextDeparture {
 }
 
 pub fn fetch_data() -> Option<&'static str> {
-    let result = reqwest::blocking::get(STATION_URL);
+    let st_now = SystemTime::now();
+    let seconds = st_now.duration_since(UNIX_EPOCH).unwrap().as_secs();
+    let url = &format!("{}?datetime={}", STATION_URL, seconds);
+    let result = reqwest::blocking::get(url);
+    /*let cur_time = readTime( DateTime::<Utc>::default() );
+    println!("Next results after {:?}", cur_time);
+
+    return Some("Debug");
+*/
     println!("Start Straba Crawler");
 
     if result.is_err() {
@@ -101,11 +111,6 @@ pub fn fetch_data() -> Option<&'static str> {
         return Option::None;
     }
 
-    let cur_time = DateTime::<Utc>::default();
-    
-    NaiveDateTime::default().and_utc()
-
-    println!("Next results after {:?}", cur_time);
     // parse JSON result.. search of both directions
     let json = body.unwrap();
     for el in (json.graphQL.response.journeys.elements) {
@@ -114,9 +119,7 @@ pub fn fetch_data() -> Option<&'static str> {
             if stop.realtimeDeparture.isoString.is_some() {
                 let txt_departure = stop.realtimeDeparture.isoString.unwrap();
                 let next_departure = DateTime::parse_from_rfc3339(&txt_departure);
-                if (next_departure.unwrap() > cur_time) {
-                    println!("To      {:} {:}", stop.destinationLabel, txt_departure);
-                }
+                println!("To      {:} {:}", stop.destinationLabel, txt_departure);
             } else {
                 println!("Planned {:} {:?}", stop.destinationLabel, stop.plannedDeparture.isoString)
             }
