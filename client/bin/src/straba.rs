@@ -59,11 +59,17 @@ pub struct Journey {
 #[derive(Default, Debug, Clone, PartialEq, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StopsElement {
-    pub destinationLabel: String,
-    //FIXME is in sub-structure: pub realtime_departure: Option<i64>,
-    //FIXME is in sub-structure: pub scheduled_departure: i64,
-    //TODO    pub difference: Option<i64>,
+    pub destinationLabel:   String,
+    pub plannedDeparture:   IsoStringDateTime,
+    pub realtimeDeparture:  IsoStringDateTime,
 }
+
+#[derive(Default, Debug, Clone, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct IsoStringDateTime {
+    pub isoString: Option<String>,
+}
+
 // Return value
 pub struct NextDeparture {
     pub rheinau: i64,
@@ -98,25 +104,14 @@ pub fn fetch_data() -> Option<&'static str> {
     // parse JSON result.. search of both directions
     let json = body.unwrap();
     for el in (json.graphQL.response.journeys.elements) {
-        //TODO:
-        /*let destination = (el.destination).to_string();
-        let departure   = el.realtime_departure;
-        let difference  = el.difference;
-
-        if departure.is_some() {
-            // get current time
-            let time_s = departure.unwrap();
-            let local_time = NaiveDateTime::from_timestamp_millis(time_s*1000).unwrap();
-            let zoned_time : DateTime<Utc> = DateTime::from_utc(local_time, Utc);
-            let europe_time = zoned_time.with_timezone(&Berlin);
-            
-            let hour = europe_time.hour();
-            let minute = europe_time.minute();
-            if zoned_time > cur_time {
-                println!("------------- Future starts here ----------------");    
+        println!("Line {:}", el.line.lineGroup.label);  
+        for stop in el.stops {
+            if stop.realtimeDeparture.isoString.is_some() {
+                println!("To      {:} {:?}", stop.destinationLabel, stop.realtimeDeparture.isoString)
+            } else {
+                println!("Planned {:} {:?}", stop.destinationLabel, stop.plannedDeparture.isoString)
             }
-            println!("{0} {1}:{2}", destination, hour, minute);
-        }*/
+        }
     }
 
     Some("")
