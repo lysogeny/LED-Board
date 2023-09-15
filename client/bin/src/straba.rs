@@ -90,12 +90,14 @@ pub fn fetch_data() -> Option<&'static str> {
         return Option::None;
     }
     let rawText = &text.unwrap();
-    println!("{}", &rawText);
 
     let body: std::result::Result<Station, serde_json::Error> = serde_json::from_str(&rawText);
 
     if body.is_err() {
         println!("Could not parse json {:?}", body.err());  
+        println!("------------------------- %< ----------------------------");
+        println!("{}", &rawText);
+        println!("------------------------- %< ----------------------------");
         return Option::None;
     }
 
