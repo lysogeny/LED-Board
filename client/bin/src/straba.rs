@@ -102,14 +102,21 @@ pub fn fetch_data() -> Option<&'static str> {
     }
 
     let cur_time = DateTime::<Utc>::default();
+    
+    NaiveDateTime::default().and_utc()
 
+    println!("Next results after {:?}", cur_time);
     // parse JSON result.. search of both directions
     let json = body.unwrap();
     for el in (json.graphQL.response.journeys.elements) {
         println!("Line {:}", el.line.lineGroup.label);  
         for stop in el.stops {
             if stop.realtimeDeparture.isoString.is_some() {
-                println!("To      {:} {:?}", stop.destinationLabel, stop.realtimeDeparture.isoString)
+                let txt_departure = stop.realtimeDeparture.isoString.unwrap();
+                let next_departure = DateTime::parse_from_rfc3339(&txt_departure);
+                if (next_departure.unwrap() > cur_time) {
+                    println!("To      {:} {:}", stop.destinationLabel, txt_departure);
+                }
             } else {
                 println!("Planned {:} {:?}", stop.destinationLabel, stop.plannedDeparture.isoString)
             }
