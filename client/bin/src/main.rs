@@ -19,6 +19,7 @@ use std::net::UdpSocket;
 use std::{env, thread};
 
 use openweathermap::forecast::Forecast;
+use straba::NextDeparture;
 // This declaration will look for a file named `straba.rs` and will
 // insert its contents inside a module named `straba` under this scope
 mod straba;
@@ -220,7 +221,9 @@ fn render_weather_icon(condition: &Weather, display: &mut UdpDisplay ){
     Image::new(&icon_image.unwrap(), Point::new((IMAGE_WIDTH-40) as i32, 0)).draw(display).unwrap();
 }
 
-fn send_package(ipaddress: String, data: &Option<Result<Forecast, String>>) {
+fn send_package(ipaddress: String, 
+                data: &Option<Result<Forecast, String>>,
+                strabaRes: &NextDeparture) {
     let mut package: [u8; PACKAGE_LENGTH] = [0; PACKAGE_LENGTH];
 
     // Brightness
@@ -237,7 +240,13 @@ fn send_package(ipaddress: String, data: &Option<Result<Forecast, String>>) {
    //     .unwrap();
     render_weather(&mut display, data);                   
 
-
+    if strabaRes.failure == false {
+        let text_style = MonoTextStyle::new(&FONT_6X10, BinaryColor::On);
+        let outbound = &format!("{}: {}", "Rheinau", strabaRes.rheinau);
+        Text::new(outbound, Point::new(0, 15), text_style)
+                .draw(&mut display)
+                .unwrap();
+    }
 
     package[1..PACKAGE_LENGTH].copy_from_slice(&display.image);
     // client need to bind to client port (1 before 4242)
@@ -278,8 +287,9 @@ fn main() {
             let mut last_data = Option::None;
             
             // Test Webcrawler for public transportataion
-            let name = straba::fetch_data();
-            println!("Name: {:?}", name); 
+            let strabaRes = straba::fetch_data();
+            println!("Rheinau: {:?}", strabaRes.rheinau);
+            println!("Schönau: {:?}", strabaRes.schoenau);
 
             loop {
                 let delay = time::Duration::from_millis(10000);
@@ -295,7 +305,7 @@ fn main() {
                     }
                 }
 
-                send_package(ip.to_string(), &last_data);
+                send_package(ip.to_string(), &last_data, &strabaRes);
             }
         }
         // all the other cases

@@ -1,5 +1,5 @@
-use chrono::{Utc, DateTime};
-use std::time::{SystemTime, Duration, UNIX_EPOCH};
+use chrono::DateTime;
+use std::time::{SystemTime, UNIX_EPOCH};
 use chrono_tz::Europe::Berlin;
 
 /* @file straba.rs
@@ -74,11 +74,18 @@ pub struct IsoStringDateTime {
 
 // Return value
 pub struct NextDeparture {
-    pub rheinau: i64,
-    pub schoenau: i64,
+    pub rheinau: String,
+    pub schoenau: String,
+    pub failure: bool,
 }
 
-pub fn fetch_data() -> Option<&'static str> {
+pub fn fetch_data() -> NextDeparture {
+    let mut returnValue = NextDeparture {
+        failure  : false,
+        rheinau  : String::from(""),
+        schoenau : String::from(""),
+    };
+
     let st_now = SystemTime::now();
     let seconds = st_now.duration_since(UNIX_EPOCH).unwrap().as_secs();
     let url = &format!("{}?datetime={}", STATION_URL, seconds);
@@ -91,13 +98,15 @@ pub fn fetch_data() -> Option<&'static str> {
     println!("Start Straba Crawler");
 
     if result.is_err() {
-        println!("Could not read station response {:?}", result.err());  
-        return Option::None;
+        println!("Could not read station response {:?}", result.err());
+        returnValue.failure = true;
+        return returnValue;
     }
     let text = result.unwrap().text();
     if text.is_err() {
         println!("Could not convert response {:?}", text.err());
-        return Option::None;
+        returnValue.failure = true;
+        return returnValue;
     }
     let rawText = &text.unwrap();
 
@@ -108,7 +117,8 @@ pub fn fetch_data() -> Option<&'static str> {
         println!("------------------------- %< ----------------------------");
         println!("{}", &rawText);
         println!("------------------------- %< ----------------------------");
-        return Option::None;
+        returnValue.failure = true;
+        return returnValue;
     }
 
     // parse JSON result.. search of both directions
@@ -120,11 +130,18 @@ pub fn fetch_data() -> Option<&'static str> {
                 let txt_departure = stop.realtimeDeparture.isoString.unwrap();
                 let next_departure = DateTime::parse_from_rfc3339(&txt_departure);
                 println!("To      {:} {:}", stop.destinationLabel, txt_departure);
+                if returnValue.rheinau == "" {
+                    if stop.destinationLabel.contains("Rheinau") {
+                        returnValue.rheinau = txt_departure;
+                    } else if returnValue.schoenau == "" {
+                        returnValue.schoenau = txt_departure;
+                    }
+                }
             } else {
                 println!("Planned {:} {:?}", stop.destinationLabel, stop.plannedDeparture.isoString)
             }
         }
     }
 
-    Some("")
+    returnValue
 }
