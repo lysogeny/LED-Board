@@ -74,6 +74,7 @@ pub struct IsoStringDateTime {
 
 // Return value
 pub struct NextDeparture {
+    pub request_time: i64,
     pub outbound_station: String,
     pub outbound_diff: i64,
     pub inbound_station: String,
@@ -82,23 +83,21 @@ pub struct NextDeparture {
 }
 
 pub fn fetch_data() -> NextDeparture {
-    let mut returnValue = NextDeparture {
-        failure  : false,
-        outbound_station  : String::from(""),
-        outbound_diff : -10000,
-        inbound_station : String::from(""),
-        inbound_diff : -10000,
-    };
 
     let st_now = SystemTime::now();
     let seconds = st_now.duration_since(UNIX_EPOCH).unwrap().as_secs();
     let url = &format!("{}?datetime={}", STATION_URL, seconds);
     let result = reqwest::blocking::get(url);
-    /*let cur_time = readTime( DateTime::<Utc>::default() );
-    println!("Next results after {:?}", cur_time);
+    
+    let mut returnValue = NextDeparture {
+        failure  : false,
+        outbound_station  : String::from(""),
+        outbound_diff : 10000,
+        inbound_station : String::from(""),
+        inbound_diff : 10000,
+        request_time : seconds as i64,
+    };
 
-    return Some("Debug");
-*/
     println!("Start Straba Crawler");
 
     if result.is_err() {
@@ -130,20 +129,22 @@ pub fn fetch_data() -> NextDeparture {
     for el in (json.graphQL.response.journeys.elements) {
         println!("Line {:}", el.line.lineGroup.label);  
         for stop in el.stops {
-            if stop.realtimeDeparture.isoString.is_some() {
+            // use only valid data
+            if stop.realtimeDeparture.isoString.is_some() && 
+                stop.destinationLabel != "" {
                 let txt_departure = stop.realtimeDeparture.isoString.unwrap();
                 let next_departure = DateTime::parse_from_rfc3339(&txt_departure).unwrap();
                 
                 let diff = next_departure.timestamp() - (seconds  as i64);
-                println!("To      {:} {:}", stop.destinationLabel, txt_departure);
+                println!("To      {:} {:} (in {:} seconds)", stop.destinationLabel, txt_departure, diff );
                 if returnValue.outbound_station == "" {
-                    if stop.destinationLabel.contains("Rheinau") {
+                    if stop.destinationLabel.contains("Rheinau") && (diff <  returnValue.outbound_diff) {
                         returnValue.outbound_station = stop.destinationLabel;
                         returnValue.outbound_diff = diff;
                     } else if stop.destinationLabel.contains("Hochschule") ||
                                 stop.destinationLabel.contains("Hauptbahnhof") ||
                                 stop.destinationLabel.contains("nau") { // Schönau
-                        if returnValue.inbound_station == "" {
+                        if returnValue.inbound_station == "" && (diff <  returnValue.inbound_diff) {
                             returnValue.inbound_station = stop.destinationLabel;
                             returnValue.inbound_diff = diff;
                         }

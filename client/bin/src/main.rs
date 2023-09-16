@@ -8,7 +8,7 @@ use tinybmp::Bmp;
 use core::time;
 use embedded_graphics::{
     image::Image,
-    mono_font::{iso_8859_1::FONT_6X10, MonoTextStyle},
+    mono_font::{iso_8859_1::FONT_6X10, iso_8859_1::FONT_5X8, MonoTextStyle},
     pixelcolor::BinaryColor,
     prelude::*,
     primitives::PrimitiveStyle,
@@ -242,12 +242,28 @@ fn send_package(ipaddress: String,
 
     if strabaRes.failure == false {
         let text_style = MonoTextStyle::new(&FONT_6X10, BinaryColor::On);
-        let outbound = &format!("{}: {}min", strabaRes.outbound_station, (strabaRes.outbound_diff / 60));
-        Text::new(outbound, Point::new(0, 15), text_style)
+        let text_style_station = MonoTextStyle::new(&FONT_5X8, BinaryColor::On);
+        let mut outbound = format!("+{}min", (strabaRes.outbound_diff / 60));
+        if (strabaRes.outbound_diff < 60) {
+            outbound = String::from("sofort");
+        }
+        Text::new(&strabaRes.outbound_station, Point::new(1, 15), text_style_station)
                 .draw(&mut display)
                 .unwrap();
-        let inbound = &format!("{}: {}min", strabaRes.inbound_station, (strabaRes.inbound_diff / 60));
-        Text::new(inbound, Point::new(0, 30), text_style)
+        Text::new(&outbound, Point::new(80, 15), text_style)
+                .draw(&mut display)
+                .unwrap();
+
+        let mut inbound = format!("+{}min", (strabaRes.inbound_diff / 60));
+        if (strabaRes.inbound_diff < 60) {
+            inbound = String::from("sofort");
+        }
+
+        
+        Text::new(&strabaRes.inbound_station, Point::new(1, 25), text_style_station)
+                .draw(&mut display)
+                .unwrap();
+        Text::new(&inbound, Point::new(80, 24), text_style)
                 .draw(&mut display)
                 .unwrap();
     }
