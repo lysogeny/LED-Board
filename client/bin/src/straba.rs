@@ -137,17 +137,18 @@ pub fn fetch_data() -> NextDeparture {
                 
                 let diff = next_departure.timestamp() - (seconds  as i64);
                 println!("To      {:} {:} (in {:} seconds)", stop.destinationLabel, txt_departure, diff );
-                if returnValue.outbound_station == "" {
-                    if stop.destinationLabel.contains("Rheinau") && (diff <  returnValue.outbound_diff) {
+                
+                if stop.destinationLabel.contains("Rheinau") {
+                    if (diff <  returnValue.outbound_diff) {
                         returnValue.outbound_station = stop.destinationLabel;
                         returnValue.outbound_diff = diff;
-                    } else if stop.destinationLabel.contains("Hochschule") ||
-                                stop.destinationLabel.contains("Hauptbahnhof") ||
-                                stop.destinationLabel.contains("nau") { // Schönau
-                        if returnValue.inbound_station == "" && (diff <  returnValue.inbound_diff) {
-                            returnValue.inbound_station = stop.destinationLabel;
-                            returnValue.inbound_diff = diff;
-                        }
+                    }
+                } else if stop.destinationLabel.contains("Hochschule") ||
+                            stop.destinationLabel.contains("Hauptbahnhof") ||
+                            stop.destinationLabel.contains("Schönau") {
+                    if (diff <  returnValue.inbound_diff) {
+                        returnValue.inbound_station = stop.destinationLabel;
+                        returnValue.inbound_diff = diff;
                     }
                 }
             } else {

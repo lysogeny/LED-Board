@@ -233,12 +233,9 @@ fn send_package(ipaddress: String,
         image: [0; IMAGE_SIZE_BYTE],
     };
 
-
-   // Line::new(Point::new(0, 0), Point::new((IMAGE_WIDTH - 1) as i32, 0))
-   //     .into_styled(PRIMITIVE_STYLE)
-   //     .draw(&mut display)
-   //     .unwrap();
-    render_weather(&mut display, data);                   
+    if (data.is_some()) {
+        render_weather(&mut display, data);                   
+    }
 
     if strabaRes.failure == false {
         let text_style = MonoTextStyle::new(&FONT_6X10, BinaryColor::On);
@@ -274,7 +271,6 @@ fn send_package(ipaddress: String,
     socket
         .send_to(&package, ipaddress + ":4242")
         .expect("couldn't send data");
-    println!("Packet sent");
 }
 
 fn help() {
