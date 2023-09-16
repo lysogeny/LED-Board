@@ -2,6 +2,7 @@
 use bit::BitIndex;
 use chrono_tz::Europe::Berlin;
 use chrono::{DateTime, NaiveDateTime, Utc, Timelike};
+use std::time::{SystemTime, UNIX_EPOCH};
 use openweathermap::forecast::Weather;
 use substring::Substring;
 use tinybmp::Bmp;
@@ -303,11 +304,13 @@ fn main() {
             let mut last_data = Option::None;
             
             // Test Webcrawler for public transportataion
-            let strabaRes = straba::fetch_data();
+            let mut strabaRes = straba::fetch_data();
             println!("{:?} {:?}s", strabaRes.outbound_station, strabaRes.outbound_diff);
             println!("{:?} {:?}s", strabaRes.inbound_station , strabaRes.inbound_diff);
 
             loop {
+                let st_now = SystemTime::now();
+                let seconds = st_now.duration_since(UNIX_EPOCH).unwrap().as_secs();
                 let delay = time::Duration::from_millis(10000);
                 thread::sleep(delay);
                 let answer = openweathermap::update_forecast(&receiver);
@@ -321,6 +324,13 @@ fn main() {
                     }
                 }
 
+                // request once a minute new data
+                if (strabaRes.request_time + 60) < seconds as i64 {
+                    strabaRes = straba::fetch_data();
+                    println!("Update {:?} {:?}s", strabaRes.outbound_station, strabaRes.outbound_diff);
+                    println!("Update {:?} {:?}s", strabaRes.inbound_station , strabaRes.inbound_diff);
+                }
+                // Render new image
                 send_package(ip.to_string(), &last_data, &strabaRes);
             }
         }
