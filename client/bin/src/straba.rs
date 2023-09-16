@@ -82,7 +82,7 @@ pub struct NextDeparture {
     pub failure: bool,
 }
 
-pub fn fetch_data() -> NextDeparture {
+pub fn fetch_data(debug_print : Option<bool>) -> NextDeparture {
 
     let st_now = SystemTime::now();
     let seconds = st_now.duration_since(UNIX_EPOCH).unwrap().as_secs();
@@ -98,8 +98,6 @@ pub fn fetch_data() -> NextDeparture {
         request_time : seconds as i64,
     };
 
-    println!("Start Straba Crawler");
-
     if result.is_err() {
         println!("Could not read station response {:?}", result.err());
         returnValue.failure = true;
@@ -111,8 +109,8 @@ pub fn fetch_data() -> NextDeparture {
         returnValue.failure = true;
         return returnValue;
     }
-    let rawText = &text.unwrap();
 
+    let rawText = &text.unwrap();
     let body: std::result::Result<Station, serde_json::Error> = serde_json::from_str(&rawText);
 
     if body.is_err() {
@@ -127,7 +125,9 @@ pub fn fetch_data() -> NextDeparture {
     // parse JSON result.. search of both directions
     let json = body.unwrap();
     for el in (json.graphQL.response.journeys.elements) {
-        println!("Line {:}", el.line.lineGroup.label);  
+        if (debug_print.is_some() && debug_print.unwrap() == true) {
+            println!("Line {:}", el.line.lineGroup.label);  
+        }
         for stop in el.stops {
             // use only valid data
             if stop.realtimeDeparture.isoString.is_some() && 
@@ -136,7 +136,9 @@ pub fn fetch_data() -> NextDeparture {
                 let next_departure = DateTime::parse_from_rfc3339(&txt_departure).unwrap();
                 
                 let diff = next_departure.timestamp() - (seconds  as i64);
-                println!("To      {:} {:} (in {:} seconds)", stop.destinationLabel, txt_departure, diff );
+                if (debug_print.is_some() && debug_print.unwrap() == true) {
+                    println!("To      {:} {:} (in {:} seconds)", stop.destinationLabel, txt_departure, diff );
+                }
                 
                 if stop.destinationLabel.contains("Rheinau") {
                     if (diff <  returnValue.outbound_diff) {

@@ -304,10 +304,12 @@ fn main() {
             let mut last_data = Option::None;
             
             // Test Webcrawler for public transportataion
-            let mut strabaRes = straba::fetch_data();
+            let mut strabaRes = straba::fetch_data(Some(true));
             println!("{:?} {:?}s", strabaRes.outbound_station, strabaRes.outbound_diff);
             println!("{:?} {:?}s", strabaRes.inbound_station , strabaRes.inbound_diff);
 
+            // Render start
+            send_package(ip.to_string(), &last_data, &strabaRes);
             loop {
                 let st_now = SystemTime::now();
                 let seconds = st_now.duration_since(UNIX_EPOCH).unwrap().as_secs();
@@ -326,7 +328,7 @@ fn main() {
 
                 // request once a minute new data
                 if (strabaRes.request_time + 60) < seconds as i64 {
-                    strabaRes = straba::fetch_data();
+                    strabaRes = straba::fetch_data(None);
                     println!("Update {:?} {:?}s", strabaRes.outbound_station, strabaRes.outbound_diff);
                     println!("Update {:?} {:?}s", strabaRes.inbound_station , strabaRes.inbound_diff);
                 }
