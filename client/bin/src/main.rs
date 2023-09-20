@@ -1,4 +1,4 @@
-
+use std::time::Duration;
 use bit::BitIndex;
 use chrono_tz::Europe::Berlin;
 use chrono::{DateTime, NaiveDateTime, Utc, Timelike};
@@ -21,6 +21,7 @@ use std::{env, thread};
 
 use openweathermap::forecast::Forecast;
 use straba::NextDeparture;
+use ping;
 // This declaration will look for a file named `straba.rs` and will
 // insert its contents inside a module named `straba` under this scope
 mod straba;
@@ -310,30 +311,52 @@ fn main() {
 
             // Render start
             send_package(ip.to_string(), &last_data, &strabaRes);
+            let mut device_online = true;
             loop {
                 let st_now = SystemTime::now();
                 let seconds = st_now.duration_since(UNIX_EPOCH).unwrap().as_secs();
                 let delay = time::Duration::from_millis(10000);
                 thread::sleep(delay);
-                let answer = openweathermap::update_forecast(&receiver);
+                // Only request, if the device is present
+                if device_online == true {
+                    let answer = openweathermap::update_forecast(&receiver);
+                    match answer {
+                        Some(_) => {
+                            last_data = answer;
+                        }
+                        None => {
 
-                match answer {
-                    Some(_) => {
-                        last_data = answer;
-                    }
-                    None => {
-
+                        }
                     }
                 }
 
-                // request once a minute new data
                 if (strabaRes.request_time + 60) < seconds as i64 {
-                    strabaRes = straba::fetch_data(None);
-                    println!("Update {:?} {:?}s", strabaRes.outbound_station, strabaRes.outbound_diff);
-                    println!("Update {:?} {:?}s", strabaRes.inbound_station , strabaRes.inbound_diff);
+                    // check once a minute if the panel is online
+                    let data: [u8; 24] = [0;24];  // ping data
+                    let result = ping::ping(ip.parse().unwrap(), Some(Duration::from_secs(1)),
+                                Some(128), Some(0), Some(0), Some(&data));
+                    match result {
+                        Ok(_) =>{
+                            device_online = true;
+                        }
+                        Err(e) => {
+                            device_online = false;
+                            println!("{} is offline, {:?}", &ip, e)
+                        }
+                    }
+
+                    // request once a minute new data
+                    if device_online == true {
+                        strabaRes = straba::fetch_data(None);
+                        println!("Update {:?} {:?}s", strabaRes.outbound_station, strabaRes.outbound_diff);
+                        println!("Update {:?} {:?}s", strabaRes.inbound_station , strabaRes.inbound_diff);
+                    }
                 }
-                // Render new image
-                send_package(ip.to_string(), &last_data, &strabaRes);
+
+                if device_online == true {
+                    // Render new image
+                    send_package(ip.to_string(), &last_data, &strabaRes);
+                }
             }
         }
         // all the other cases
