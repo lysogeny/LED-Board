@@ -131,6 +131,7 @@ fn render_weather(display: &mut UdpDisplay ,data: &Option<Result<Forecast, Strin
                 println!("{}", &error);
             }
             Ok(result) => {
+                let mut temp:&f64 = &-1_f64;
                 if !result.list.is_empty() {
                     let mut max:f64 = 0_f64;
                     let mut best = &result.list[0];
@@ -148,6 +149,9 @@ fn render_weather(display: &mut UdpDisplay ,data: &Option<Result<Forecast, Strin
                             println!("Skipping old result {hour}:{minute} @{time_s}");
                         }
 
+                        temp = &forecast.main.temp;
+                        println!("Forecast Temp is {temp}°C");
+
                         match &forecast.rain {
                             Some(x) => {
                                 let rain_v = x.three_hours;
@@ -159,7 +163,6 @@ fn render_weather(display: &mut UdpDisplay ,data: &Option<Result<Forecast, Strin
                             },
                             None    => println!("No rain at {hour}:{minute}"),
                         }
-
                         
                     }
                     
@@ -168,7 +171,14 @@ fn render_weather(display: &mut UdpDisplay ,data: &Option<Result<Forecast, Strin
                     
                     println!("Weather info: {} desc: {} icon {}", condition.main, condition.description, condition.icon);
 
-                    render_weather_icon(&condition, display);          
+                    render_weather_icon(&condition, display);
+                    
+
+                    let text_style = MonoTextStyle::new(&FONT_6X10, BinaryColor::On);
+                        let temp_string = format!("{temp:.0}°C");
+                        Text::new(&temp_string, Point::new((IMAGE_WIDTH-60) as i32, 7), text_style)
+                        .draw(display)
+                        .unwrap();
                 }
             }
         },
