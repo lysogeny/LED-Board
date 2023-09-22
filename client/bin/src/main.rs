@@ -12,7 +12,6 @@ use embedded_graphics::{
     mono_font::{iso_8859_1::FONT_6X10, iso_8859_1::FONT_5X8, MonoTextStyle},
     pixelcolor::BinaryColor,
     prelude::*,
-    primitives::PrimitiveStyle,
     text::Text,
 };
 
@@ -22,7 +21,6 @@ use std::io;
 
 use openweathermap::forecast::Forecast;
 use straba::NextDeparture;
-use ping;
 // This declaration will look for a file named `straba.rs` and will
 // insert its contents inside a module named `straba` under this scope
 mod straba;
@@ -35,10 +33,6 @@ const IMAGE_HEIGHT: u32 = 40;
 const IMAGE_HEIGHT_BYTE: u32 = 40;
 const IMAGE_LENGTH: usize = (IMAGE_WIDTH_BYTE * IMAGE_HEIGHT_BYTE) as usize;
 const PACKAGE_LENGTH: usize = (IMAGE_LENGTH + 1) as usize;
-
-const PRIMITIVE_STYLE:PrimitiveStyle<BinaryColor> = PrimitiveStyle::with_stroke(BinaryColor::On, 1);
-
-
 
 
 struct UdpDisplay {
@@ -236,7 +230,7 @@ fn render_weather_icon(condition: &Weather, display: &mut UdpDisplay ){
 
 fn send_package(ipaddress: String, 
                 data: &Option<Result<Forecast, String>>,
-                strabaRes: &NextDeparture) {
+                straba_res: &NextDeparture) {
     let mut package: [u8; PACKAGE_LENGTH] = [0; PACKAGE_LENGTH];
 
     // Brightness
@@ -246,31 +240,31 @@ fn send_package(ipaddress: String,
         image: [0; IMAGE_SIZE_BYTE],
     };
 
-    if (data.is_some()) {
+    if data.is_some() {
         render_weather(&mut display, data);                   
     }
 
-    if strabaRes.failure == false {
+    if straba_res.failure == false {
         let text_style = MonoTextStyle::new(&FONT_6X10, BinaryColor::On);
         let text_style_station = MonoTextStyle::new(&FONT_5X8, BinaryColor::On);
-        let mut outbound = format!("+{}min", (strabaRes.outbound_diff / 60));
-        if (strabaRes.outbound_diff < 60) {
+        let mut outbound = format!("+{}min", (straba_res.outbound_diff / 60));
+        if straba_res.outbound_diff < 60 {
             outbound = String::from("sofort");
         }
-        Text::new(&strabaRes.outbound_station, Point::new(1, 15), text_style_station)
+        Text::new(&straba_res.outbound_station, Point::new(1, 15), text_style_station)
                 .draw(&mut display)
                 .unwrap();
         Text::new(&outbound, Point::new(80, 15), text_style)
                 .draw(&mut display)
                 .unwrap();
 
-        let mut inbound = format!("+{}min", (strabaRes.inbound_diff / 60));
-        if (strabaRes.inbound_diff < 60) {
+        let mut inbound = format!("+{}min", (straba_res.inbound_diff / 60));
+        if straba_res.inbound_diff < 60 {
             inbound = String::from("sofort");
         }
 
         
-        Text::new(&strabaRes.inbound_station, Point::new(1, 25), text_style_station)
+        Text::new(&straba_res.inbound_station, Point::new(1, 25), text_style_station)
                 .draw(&mut display)
                 .unwrap();
         Text::new(&inbound, Point::new(80, 24), text_style)
@@ -296,12 +290,12 @@ LEDboardClient <ip address>"
 }
 
 fn check_connection(ipaddress: String) -> bool {
-    let mut device_online = false;
+    let device_online;
     // generate a faulty package length
     let mut package: [u8; PACKAGE_LENGTH/2] = [0; PACKAGE_LENGTH/2];
     // client need to bind to client port (1 before 4242)
     let socket = UdpSocket::bind("0.0.0.0:14242").expect("couldn't bind to address");
-    socket.set_read_timeout(Some(Duration::from_secs(10))); /* 10 seconds timeout */
+    socket.set_read_timeout(Some(Duration::from_secs(10))).unwrap(); /* 10 seconds timeout */
     socket
         .send_to(&package, ipaddress + ":4242")
         .expect("couldn't send data");
@@ -309,14 +303,14 @@ fn check_connection(ipaddress: String) -> bool {
     // self.recv_buff is a [u8; 8092]
     let answer = socket.recv_from(&mut package);
     match answer {
-        Ok((n, addr)) => {
+        Ok((_n, _addr)) => {
             //println!("{} bytes response from {:?} {:?}", n, addr, &package[..n]);
             device_online = true;
         }
         Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
             device_online = false;
         }
-        Err(e) => {
+        Err(_e) => {
             device_online = false;
         }
     }
@@ -338,7 +332,7 @@ fn main() {
 
 
             let mut device_online = check_connection(ip.to_string());
-            if (!device_online) {
+            if !device_online {
                 println!("{} not online", ip);
                 return
             }
@@ -352,12 +346,12 @@ fn main() {
             let mut last_data = Option::None;
             
             // Test Webcrawler for public transportataion
-            let mut strabaRes = straba::fetch_data(Some(true));
-            println!("{:?} {:?}s", strabaRes.outbound_station, strabaRes.outbound_diff);
-            println!("{:?} {:?}s", strabaRes.inbound_station , strabaRes.inbound_diff);
+            let mut straba_res = straba::fetch_data(Some(true));
+            println!("{:?} {:?}s", straba_res.outbound_station, straba_res.outbound_diff);
+            println!("{:?} {:?}s", straba_res.inbound_station , straba_res.inbound_diff);
 
             // Render start
-            send_package(ip.to_string(), &last_data, &strabaRes);
+            send_package(ip.to_string(), &last_data, &straba_res);
             loop {
                 let st_now = SystemTime::now();
                 let seconds = st_now.duration_since(UNIX_EPOCH).unwrap().as_secs();
@@ -376,19 +370,19 @@ fn main() {
                     }
                 }
 
-                if (strabaRes.request_time + 60) < seconds as i64 {
+                if (straba_res.request_time + 60) < seconds as i64 {
                     device_online = check_connection(ip.to_string());
                     // request once a minute new data
                     if device_online == true {
-                        strabaRes = straba::fetch_data(None);
-                        println!("Update {:?} {:?}s", strabaRes.outbound_station, strabaRes.outbound_diff);
-                        println!("Update {:?} {:?}s", strabaRes.inbound_station , strabaRes.inbound_diff);
+                        straba_res = straba::fetch_data(None);
+                        println!("Update {:?} {:?}s", straba_res.outbound_station, straba_res.outbound_diff);
+                        println!("Update {:?} {:?}s", straba_res.inbound_station , straba_res.inbound_diff);
                     }
                 }
 
                 if device_online == true {
                     // Render new image
-                    send_package(ip.to_string(), &last_data, &strabaRes);
+                    send_package(ip.to_string(), &last_data, &straba_res);
                 }
             }
         }
