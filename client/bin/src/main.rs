@@ -18,6 +18,7 @@ use embedded_graphics::{
 
 use std::net::UdpSocket;
 use std::{env, thread};
+use std::io;
 
 use openweathermap::forecast::Forecast;
 use straba::NextDeparture;
@@ -290,6 +291,7 @@ fn check_connection(ipaddress: String) -> bool {
     let mut package: [u8; PACKAGE_LENGTH/2] = [0; PACKAGE_LENGTH/2];
     // client need to bind to client port (1 before 4242)
     let socket = UdpSocket::bind("0.0.0.0:14242").expect("couldn't bind to address");
+    socket.set_read_timeout(Some(Duration::from_secs(10))); /* 10 seconds timeout */
     socket
         .send_to(&package, ipaddress + ":4242")
         .expect("couldn't send data");
@@ -298,8 +300,11 @@ fn check_connection(ipaddress: String) -> bool {
     let answer = socket.recv_from(&mut package);
     match answer {
         Ok((n, addr)) => {
-            //println!("{} bytes response from {:?}", n, addr);
+            //println!("{} bytes response from {:?} {:?}", n, addr, &package[..n]);
             device_online = true;
+        }
+        Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
+            device_online = false;
         }
         Err(e) => {
             device_online = false;
