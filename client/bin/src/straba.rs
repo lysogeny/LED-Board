@@ -11,6 +11,7 @@ const STATION_URL:&str = "https://www.rnv-online.de/rest/departure/2494";
 pub struct Station {
     pub id: String,
     pub name: String,
+    #[serde(alias = "graphQL")]
     pub graph_ql: GraphQL,
 }
 

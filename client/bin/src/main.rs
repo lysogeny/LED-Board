@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{time::Duration, fmt::format};
 use bit::BitIndex;
 use chrono_tz::Europe::Berlin;
 use chrono::{DateTime, NaiveDateTime, Utc, Timelike};
@@ -228,6 +228,19 @@ fn render_weather_icon(condition: &Weather, display: &mut UdpDisplay ){
     Image::new(&icon_image.unwrap(), Point::new((IMAGE_WIDTH-40) as i32, 0)).draw(display).unwrap();
 }
 
+fn render_clock(display: &mut UdpDisplay){
+    let cur_time = DateTime::<Utc>::default();
+    let europe_time = cur_time.with_timezone(&Berlin);
+    let hour = europe_time.hour();
+    let minute = europe_time.minute();
+    let second = europe_time.second();
+    let time = format!("{hour:0>2}:{minute:0>2}:{second:0>2}");
+    let text_style = MonoTextStyle::new(&FONT_6X10, BinaryColor::On);
+    Text::new(&time, Point::new((1) as i32, 7), text_style)
+    .draw(display)
+    .unwrap();
+}
+
 fn send_package(ipaddress: String, 
                 data: &Option<Result<Forecast, String>>,
                 straba_res: &NextDeparture) {
@@ -271,6 +284,11 @@ fn send_package(ipaddress: String,
                 .draw(&mut display)
                 .unwrap();
     }
+
+
+
+    render_clock(&mut display);
+
 
     package[1..PACKAGE_LENGTH].copy_from_slice(&display.image);
     // client need to bind to client port (1 before 4242)
