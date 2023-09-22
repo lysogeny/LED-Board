@@ -284,6 +284,30 @@ LEDboardClient <ip address>"
     println!("<ip address>");
 }
 
+fn check_connection(ipaddress: String) -> bool {
+    let mut device_online = false;
+    // generate a faulty package length
+    let mut package: [u8; PACKAGE_LENGTH/2] = [0; PACKAGE_LENGTH/2];
+    // client need to bind to client port (1 before 4242)
+    let socket = UdpSocket::bind("0.0.0.0:14242").expect("couldn't bind to address");
+    socket
+        .send_to(&package, ipaddress + ":4242")
+        .expect("couldn't send data");
+
+    // self.recv_buff is a [u8; 8092]
+    let answer = socket.recv_from(&mut package);
+    match answer {
+        Ok((n, addr)) => {
+            //println!("{} bytes response from {:?}", n, addr);
+            device_online = true;
+        }
+        Err(e) => {
+            device_online = false;
+        }
+    }
+    return device_online;
+}
+
 fn main() {
     let args: Vec<String> = env::args().collect();
 
@@ -296,6 +320,14 @@ fn main() {
         // one argument passed
         2 => {
             let ip = &args[1];
+
+
+            let mut device_online = check_connection(ip.to_string());
+            if (!device_online) {
+                println!("{} not online", ip);
+                return
+            }
+
             let receiver = openweathermap::init_forecast("Mannheim",
             "metric",
             "de",
@@ -311,7 +343,6 @@ fn main() {
 
             // Render start
             send_package(ip.to_string(), &last_data, &strabaRes);
-            let mut device_online = true;
             loop {
                 let st_now = SystemTime::now();
                 let seconds = st_now.duration_since(UNIX_EPOCH).unwrap().as_secs();
@@ -325,26 +356,13 @@ fn main() {
                             last_data = answer;
                         }
                         None => {
-
+            
                         }
                     }
                 }
 
                 if (strabaRes.request_time + 60) < seconds as i64 {
-                    // check once a minute if the panel is online
-                    let data: [u8; 24] = [0;24];  // ping data
-                    let result = ping::ping(ip.parse().unwrap(), Some(Duration::from_secs(1)),
-                                Some(128), Some(0), Some(0), Some(&data));
-                    match result {
-                        Ok(_) =>{
-                            device_online = true;
-                        }
-                        Err(e) => {
-                            device_online = false;
-                            println!("{} is offline, {:?}", &ip, e)
-                        }
-                    }
-
+                    device_online = check_connection(ip.to_string());
                     // request once a minute new data
                     if device_online == true {
                         strabaRes = straba::fetch_data(None);
