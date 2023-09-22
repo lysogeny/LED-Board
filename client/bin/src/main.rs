@@ -2,6 +2,7 @@ use std::{time::Duration, fmt::format};
 use bit::BitIndex;
 use chrono_tz::Europe::Berlin;
 use chrono::{DateTime, NaiveDateTime, Utc, Timelike};
+use chrono::prelude::*;
 use std::time::{SystemTime, UNIX_EPOCH};
 use openweathermap::forecast::Weather;
 use substring::Substring;
@@ -138,7 +139,7 @@ fn render_weather(display: &mut UdpDisplay ,data: &Option<Result<Forecast, Strin
                         let hour = europe_time.hour();
                         let minute = europe_time.minute();
 
-                        let cur_time = DateTime::<Utc>::default();
+                        let cur_time = chrono::offset::Utc::now();
                         if zoned_time > cur_time {
                             println!("Skipping old result {hour}:{minute} @{time_s}");
                         }
@@ -229,8 +230,8 @@ fn render_weather_icon(condition: &Weather, display: &mut UdpDisplay ){
 }
 
 fn render_clock(display: &mut UdpDisplay){
-    let cur_time = DateTime::<Utc>::default();
-    let europe_time = cur_time.with_timezone(&Berlin);
+    let time = chrono::offset::Utc::now();
+    let europe_time = time.with_timezone(&Berlin);
     let hour = europe_time.hour();
     let minute = europe_time.minute();
     let second = europe_time.second();
@@ -373,7 +374,7 @@ fn main() {
             loop {
                 let st_now = SystemTime::now();
                 let seconds = st_now.duration_since(UNIX_EPOCH).unwrap().as_secs();
-                let delay = time::Duration::from_millis(10000);
+                let delay = time::Duration::from_millis(500);
                 thread::sleep(delay);
                 // Only request, if the device is present
                 if device_online == true {
