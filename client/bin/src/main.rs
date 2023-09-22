@@ -261,7 +261,7 @@ fn send_package(ipaddress: String,
     if straba_res.failure == false {
         let text_style = MonoTextStyle::new(&FONT_6X10, BinaryColor::On);
         let text_style_station = MonoTextStyle::new(&FONT_5X8, BinaryColor::On);
-        let mut outbound = format!("+{}min", (straba_res.outbound_diff / 60));
+        let mut outbound = format!("{}min", (straba_res.outbound_diff / 60));
         if straba_res.outbound_diff < 60 {
             outbound = String::from("sofort");
         }
@@ -272,7 +272,7 @@ fn send_package(ipaddress: String,
                 .draw(&mut display)
                 .unwrap();
 
-        let mut inbound = format!("+{}min", (straba_res.inbound_diff / 60));
+        let mut inbound = format!("{}min", (straba_res.inbound_diff / 60));
         if straba_res.inbound_diff < 60 {
             inbound = String::from("sofort");
         }
