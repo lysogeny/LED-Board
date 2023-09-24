@@ -226,7 +226,7 @@ fn render_weather_icon(condition: &Weather, display: &mut UdpDisplay ){
             return;
         }
     };
-    Image::new(&icon_image.unwrap(), Point::new((IMAGE_WIDTH-40) as i32, 0)).draw(display).unwrap();
+    Image::new(&icon_image.unwrap(), Point::new((IMAGE_WIDTH-40) as i32, 6)).draw(display).unwrap();
 }
 
 fn render_clock(display: &mut UdpDisplay){
@@ -281,7 +281,7 @@ fn send_package(ipaddress: String,
         Text::new(&straba_res.inbound_station, Point::new(1, 25), text_style_station)
                 .draw(&mut display)
                 .unwrap();
-        Text::new(&inbound, Point::new(80, 24), text_style)
+        Text::new(&inbound, Point::new(80, 25), text_style)
                 .draw(&mut display)
                 .unwrap();
     }
