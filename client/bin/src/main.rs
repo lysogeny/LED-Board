@@ -10,7 +10,7 @@ use tinybmp::Bmp;
 use core::time;
 use embedded_graphics::{
     image::Image,
-    mono_font::{iso_8859_1::FONT_6X10, iso_8859_1::FONT_5X8, MonoTextStyle},
+    mono_font::{iso_8859_1::FONT_6X10, iso_8859_1::FONT_5X8, iso_8859_1::FONT_4X6, MonoTextStyle},
     pixelcolor::BinaryColor,
     prelude::*,
     text::Text,
@@ -226,7 +226,7 @@ fn render_weather_icon(condition: &Weather, display: &mut UdpDisplay ){
             return;
         }
     };
-    Image::new(&icon_image.unwrap(), Point::new((IMAGE_WIDTH-40) as i32, 6)).draw(display).unwrap();
+    Image::new(&icon_image.unwrap(), Point::new((IMAGE_WIDTH-40) as i32, 0)).draw(display).unwrap();
 }
 
 fn render_clock(display: &mut UdpDisplay){
