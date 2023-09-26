@@ -10,7 +10,7 @@ use tinybmp::Bmp;
 use core::time;
 use embedded_graphics::{
     image::Image,
-    mono_font::{iso_8859_1::FONT_6X10, iso_8859_1::FONT_5X8, MonoTextStyle},
+    mono_font::{iso_8859_1::FONT_6X10, iso_8859_1::FONT_5X8, iso_8859_1::FONT_4X6, MonoTextStyle},
     pixelcolor::BinaryColor,
     prelude::*,
     text::Text,
@@ -281,7 +281,7 @@ fn send_package(ipaddress: String,
         Text::new(&straba_res.inbound_station, Point::new(1, 25), text_style_station)
                 .draw(&mut display)
                 .unwrap();
-        Text::new(&inbound, Point::new(80, 24), text_style)
+        Text::new(&inbound, Point::new(80, 25), text_style)
                 .draw(&mut display)
                 .unwrap();
     }
