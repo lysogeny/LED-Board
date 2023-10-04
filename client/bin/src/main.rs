@@ -389,7 +389,7 @@ fn main() -> ExitCode {
                     }
                 }
 
-                if (straba_res.request_time + 60) < seconds as i64 {
+                if (straba_res.request_time + 50) < seconds as i64 {
                     device_online = check_connection(ip.to_string());
                     // request once a minute new data
                     if device_online == true {
