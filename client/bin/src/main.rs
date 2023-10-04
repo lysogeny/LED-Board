@@ -1,8 +1,7 @@
-use std::{time::Duration, fmt::format};
+use std::time::Duration;
 use bit::BitIndex;
 use chrono_tz::Europe::Berlin;
 use chrono::{DateTime, NaiveDateTime, Utc, Timelike};
-use chrono::prelude::*;
 use std::time::{SystemTime, UNIX_EPOCH};
 use openweathermap::forecast::Weather;
 use substring::Substring;
@@ -19,6 +18,7 @@ use embedded_graphics::{
 use std::net::UdpSocket;
 use std::{env, thread};
 use std::io;
+use std::process::ExitCode;
 
 use openweathermap::forecast::Forecast;
 use straba::NextDeparture;
@@ -336,14 +336,14 @@ fn check_connection(ipaddress: String) -> bool {
     return device_online;
 }
 
-fn main() {
+fn main() -> ExitCode {
     let args: Vec<String> = env::args().collect();
-
     match args.len() {
         // no arguments passed
         1 => {
             // show a help message
             help();
+            return ExitCode::SUCCESS;
         }
         // one argument passed
         2 => {
@@ -353,7 +353,7 @@ fn main() {
             let mut device_online = check_connection(ip.to_string());
             if !device_online {
                 println!("{} not online", ip);
-                return
+                return ExitCode::FAILURE;
             }
 
             let receiver = openweathermap::init_forecast("Mannheim",
@@ -409,6 +409,7 @@ fn main() {
         _ => {
             // show a help message
             help();
+            return ExitCode::SUCCESS;
         }
     }
 }
