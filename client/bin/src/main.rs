@@ -276,8 +276,8 @@ fn render_strab_partial(display: &mut UdpDisplay, station: &String, diff: i64, h
 }
 
 fn render_strab(display: &mut UdpDisplay, straba_res: &NextDeparture) {
-    render_strab_partial(display, &straba_res.outbound_station, straba_res.outbound_diff, 15);
-    render_strab_partial(display, &straba_res.inbound_station, straba_res.inbound_diff, 25);
+    render_strab_partial(display, &straba_res.outbound_station, straba_res.outbound_diff, 17);
+    render_strab_partial(display, &straba_res.inbound_station, straba_res.inbound_diff, 27);
 }
 
 fn send_package(ipaddress: String, 
