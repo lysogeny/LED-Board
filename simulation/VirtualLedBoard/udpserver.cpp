@@ -20,10 +20,10 @@ UdpLedServer::UdpLedServer (QObject *parent, MainWindow *window)
             window,
             &MainWindow::updatePanel);
 
-
+    bool init = true;
     for(int x=0; x < (PANEL_WIDTH * MAXIMUM_PANELSIZE); x++) {
         for(int y=0; y < PANEL_HEIGHT; y++) {
-            changeLEDstate(x, y);
+            changeLEDstate(x, y, init);
         }
     }
     updatePanelContent();
@@ -57,8 +57,9 @@ void UdpLedServer::processTheDatagram(QNetworkDatagram datagram) {
         uint16_t mask = 1;
         for(int y=0; y < PANEL_HEIGHT; y++) {
             for(int x=0; x < (PANEL_WIDTH * MAXIMUM_PANELSIZE); x++) {
-                if (datagram.data().at(currentIndex) & mask) {
-                    this->changeLEDstate(x, y);
+                bool state = mask & datagram.data().at(currentIndex);
+                this->changeLEDstate(x, y, state);
+                if (state) {
                     qDebug() << x << "x" << y << " set";
                 }
                 mask = (mask << 1);
