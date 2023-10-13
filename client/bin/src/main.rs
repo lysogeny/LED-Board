@@ -1,4 +1,5 @@
-use std::time::Duration;
+use std::{time::Duration, fmt::format};
+use str;
 use bit::BitIndex;
 use chrono_tz::Europe::Berlin;
 use chrono::{DateTime, NaiveDateTime, Utc, Timelike};
@@ -242,6 +243,43 @@ fn render_clock(display: &mut UdpDisplay){
     .unwrap();
 }
 
+fn render_strab_partial(display: &mut UdpDisplay, station: &String, diff: i64, height: i32) {
+    let text_style = MonoTextStyle::new(&FONT_6X10, BinaryColor::On);
+    let mut diff_str = format!("{}min", (diff / 60));
+    if diff < 60 {
+        diff_str = String::from("sofort");
+    }
+    let station_short: String;
+    if str::len(&station) > 13 {
+        station_short = station
+            .replace("Straße", "Str")
+            .replace("straße", "str")
+            .replace("Platz", "Pl")
+            .replace("platz", "pl")
+            .replace("Hauptbahnhof", "Hbf")
+            .replace("Bahnhof", "Bf");
+    } else {
+        station_short = station.to_string();
+    }
+    let station_clip: String;
+    if str::len(&station_short) > 13 {
+        station_clip = station_short[0..12].to_string();
+    } else {
+        station_clip = station_short.to_string();
+    }
+    Text::new(&station_clip, Point::new(1, height), text_style)
+            .draw(display)
+            .unwrap();
+    Text::new(&diff_str, Point::new(80, height), text_style)
+            .draw(display)
+            .unwrap();
+}
+
+fn render_strab(display: &mut UdpDisplay, straba_res: &NextDeparture) {
+    render_strab_partial(display, &straba_res.outbound_station, straba_res.outbound_diff, 15);
+    render_strab_partial(display, &straba_res.inbound_station, straba_res.inbound_diff, 25);
+}
+
 fn send_package(ipaddress: String, 
                 data: &Option<Result<Forecast, String>>,
                 straba_res: &NextDeparture) {
@@ -259,34 +297,8 @@ fn send_package(ipaddress: String,
     }
 
     if straba_res.failure == false {
-        let text_style = MonoTextStyle::new(&FONT_6X10, BinaryColor::On);
-        let text_style_station = MonoTextStyle::new(&FONT_5X8, BinaryColor::On);
-        let mut outbound = format!("{}min", (straba_res.outbound_diff / 60));
-        if straba_res.outbound_diff < 60 {
-            outbound = String::from("sofort");
-        }
-        Text::new(&straba_res.outbound_station, Point::new(1, 15), text_style_station)
-                .draw(&mut display)
-                .unwrap();
-        Text::new(&outbound, Point::new(80, 15), text_style)
-                .draw(&mut display)
-                .unwrap();
-
-        let mut inbound = format!("{}min", (straba_res.inbound_diff / 60));
-        if straba_res.inbound_diff < 60 {
-            inbound = String::from("sofort");
-        }
-
-        
-        Text::new(&straba_res.inbound_station, Point::new(1, 25), text_style_station)
-                .draw(&mut display)
-                .unwrap();
-        Text::new(&inbound, Point::new(80, 25), text_style)
-                .draw(&mut display)
-                .unwrap();
+        render_strab(&mut display, straba_res);
     }
-
-
 
     render_clock(&mut display);
 
