@@ -144,7 +144,7 @@ fn render_weather(display: &mut UdpDisplay ,data: &Option<Result<Forecast, Strin
 
                         let cur_time = chrono::offset::Utc::now();
                         if zoned_time > cur_time {
-                            log::info!("Skipping old result {hour}:{minute} @{time_s}");
+                            log::info!("Skipping old result {hour:0>2}:{minute:0>2} @{time_s}");
                         }
 
                         temp = &forecast.main.temp;
@@ -153,13 +153,13 @@ fn render_weather(display: &mut UdpDisplay ,data: &Option<Result<Forecast, Strin
                         match &forecast.rain {
                             Some(x) => {
                                 let rain_v = x.three_hours;
-                                log::info!("Rain at {hour}:{minute} @{time_s} with {rain_v} prior best was {max}");
+                                log::info!("Rain at {hour:0>2}:{minute:0>2} @{time_s} with {rain_v} prior best was {max}");
                                 if rain_v > max {
                                     best = forecast;
                                     max = rain_v;
                                 }
                             },
-                            None => log::info!("No rain at {hour}:{minute}"),
+                            None => log::info!("No rain at {hour:0>2}:{minute:0>2}"),
                         }
                         
                     }
