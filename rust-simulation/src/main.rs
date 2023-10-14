@@ -11,6 +11,7 @@ use embedded_graphics_simulator::{
 use env_logger;
 use log;
 use std::net::UdpSocket;
+use clap::Parser;
 
 const PANEL_WIDTH: u32 = 32;
 const PANEL_COUNT: u32 = 5;
@@ -123,8 +124,21 @@ impl Client {
     }
 }
 
+#[derive(Parser)]
+#[command(author, version, about, long_about = None)]
+struct Args {
+    /// Port to bind to
+    #[arg(short, long, default_value_t=4242)]
+    port: i32,
+
+    /// Address to bind to
+    #[arg(short, long, default_value_t=String::from("0.0.0.0"))]
+    addr: String
+}
+
 fn main() {
+    let args = Args::parse();
     env_logger::init();
-    let mut client = Client::new("0.0.0.0", 4242);
+    let mut client = Client::new("0.0.0.0", args.port);
     client.run();
 }
