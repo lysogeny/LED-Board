@@ -28,7 +28,7 @@ struct Display {
 impl Display {
     fn new() -> Display {
         let output_settings = OutputSettingsBuilder::new()
-            .theme(BinaryColorTheme::OledBlue)
+            .theme(BinaryColorTheme::Default)
             .scale(4)
             .build();
         Display {
