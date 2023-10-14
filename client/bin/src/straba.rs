@@ -1,5 +1,6 @@
 use chrono::DateTime;
 use std::time::{SystemTime, UNIX_EPOCH};
+use log;
 
 use serde::Deserialize;
 
@@ -103,11 +104,9 @@ impl NextDeparture {
             request_time : seconds,
         }
     }
-    fn populate_departure(&mut self, result: Station, debug_print: Option<bool>) {
+    fn populate_departure(&mut self, result: Station) {
         let journeys = result.graph_ql.response.journeys.elements;
-        if debug_print.is_some() && debug_print.unwrap() == true {
-            println!("Found {} journeys", journeys.len());
-        }
+        log::debug!("Found {} journeys", journeys.len());
         for el in journeys {
             for stop in el.stops {
                 // use only valid data
@@ -117,39 +116,37 @@ impl NextDeparture {
                     let next_departure = DateTime::parse_from_rfc3339(&txt_departure).unwrap();
                     
                     let diff = next_departure.timestamp() - (self.request_time  as i64);
-                    if debug_print.is_some() && debug_print.unwrap() == true {
-                        println!("To      {:} {:} (in {:} seconds)", stop.destination_label, txt_departure, diff );
-                    }
+                    log::debug!("To      {:} {:} (in {:} seconds)", stop.destination_label, txt_departure, diff );
                     
                     if stop.destination_label.contains("Rheinau") {
-                        if diff <  self.outbound_diff {
+                        if diff < self.outbound_diff {
                             self.outbound_station = stop.destination_label;
                             self.outbound_diff = diff;
                         }
                     } else if stop.destination_label.contains("Hochschule") ||
                                 stop.destination_label.contains("Hauptbahnhof") ||
                                 stop.destination_label.contains("Schönau") {
-                        if diff <  self.inbound_diff {
+                        if diff < self.inbound_diff {
                             self.inbound_station = stop.destination_label;
                             self.inbound_diff = diff;
                         }
                     }
                 } else {
-                    println!("Planned {:} {:?}", stop.destination_label, stop.planned_departure.iso_string)
+                    log::debug!("Planned {:} {:?}", stop.destination_label, stop.planned_departure.iso_string)
                 }
             }
         }
     }
 }
 
-pub fn fetch_data(debug_print : Option<bool>) -> NextDeparture {
+pub fn fetch_data() -> NextDeparture {
     let st_now = SystemTime::now();
     let seconds = st_now.duration_since(UNIX_EPOCH).unwrap().as_secs();
     let url = &format!("{}?datetime={}", STATION_URL, seconds);
     let mut return_value = NextDeparture::new(seconds as i64);
     match api_request(url) {
-        Ok(content) => return_value.populate_departure(content, debug_print),
-        Err(error) => eprintln!("Error! {:?}", error)
+        Ok(content) => return_value.populate_departure(content),
+        Err(error) => log::error!("Error! {:?}", error)
     };
     return return_value
 }

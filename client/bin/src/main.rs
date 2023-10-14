@@ -1,5 +1,7 @@
-use std::{time::Duration, fmt::format};
+use std::time::Duration;
 use str;
+use log;
+use env_logger;
 use bit::BitIndex;
 use chrono_tz::Europe::Berlin;
 use chrono::{DateTime, NaiveDateTime, Utc, Timelike};
@@ -10,7 +12,7 @@ use tinybmp::Bmp;
 use core::time;
 use embedded_graphics::{
     image::Image,
-    mono_font::{iso_8859_1::FONT_6X10, iso_8859_1::FONT_5X8, iso_8859_1::FONT_4X6, MonoTextStyle},
+    mono_font::{iso_8859_1::FONT_6X10, MonoTextStyle},
     pixelcolor::BinaryColor,
     prelude::*,
     text::Text,
@@ -101,7 +103,7 @@ impl DrawTarget for UdpDisplay {
 
             let y = y as u32;
             let v = pixel.1.is_on();
-            //println!("pint {x} {y} is on {v}");
+            log::trace!("print {x} {y} is on {v}");
             let offset: usize = (x + y * IMAGE_WIDTH) as usize;
 
             let subbit: usize = (offset % 8).into();
@@ -124,7 +126,7 @@ fn render_weather(display: &mut UdpDisplay ,data: &Option<Result<Forecast, Strin
                 Text::new(&error, Point::new(0, 5), text_style)
                     .draw(display)
                     .unwrap();
-                println!("{}", &error);
+                log::error!("{}", &error);
             }
             Ok(result) => {
                 let mut temp:&f64 = &-1_f64;
@@ -134,7 +136,7 @@ fn render_weather(display: &mut UdpDisplay ,data: &Option<Result<Forecast, Strin
                     for forecast in &result.list {
                         let time_s = forecast.dt;
                         let local_time = NaiveDateTime::from_timestamp_millis(time_s*1000).unwrap();
-                        let zoned_time : DateTime<Utc> = DateTime::from_utc(local_time, Utc);
+                        let zoned_time : DateTime<Utc> = DateTime::from_naive_utc_and_offset(local_time, Utc);
                         let europe_time = zoned_time.with_timezone(&Berlin);
                         
                         let hour = europe_time.hour();
@@ -142,22 +144,22 @@ fn render_weather(display: &mut UdpDisplay ,data: &Option<Result<Forecast, Strin
 
                         let cur_time = chrono::offset::Utc::now();
                         if zoned_time > cur_time {
-                            println!("Skipping old result {hour}:{minute} @{time_s}");
+                            log::info!("Skipping old result {hour}:{minute} @{time_s}");
                         }
 
                         temp = &forecast.main.temp;
-                        println!("Forecast Temp is {temp}°C");
+                        log::info!("Forecast Temp is {temp}°C");
 
                         match &forecast.rain {
                             Some(x) => {
                                 let rain_v = x.three_hours;
-                                println!("Rain at {hour}:{minute} @{time_s} with {rain_v} prior best was {max}");
+                                log::info!("Rain at {hour}:{minute} @{time_s} with {rain_v} prior best was {max}");
                                 if rain_v > max {
                                     best = forecast;
                                     max = rain_v;
                                 }
                             },
-                            None    => println!("No rain at {hour}:{minute}"),
+                            None => log::info!("No rain at {hour}:{minute}"),
                         }
                         
                     }
@@ -165,7 +167,7 @@ fn render_weather(display: &mut UdpDisplay ,data: &Option<Result<Forecast, Strin
                     let condition = best.weather[0].to_owned();
                     
                     
-                    println!("Weather info: {} desc: {} icon {}", condition.main, condition.description, condition.icon);
+                    log::info!("Weather info: {} desc: {} icon {}", condition.main, condition.description, condition.icon);
 
                     render_weather_icon(&condition, display);
                     
@@ -182,7 +184,7 @@ fn render_weather(display: &mut UdpDisplay ,data: &Option<Result<Forecast, Strin
             Text::new("Waiting for data", Point::new(0, 0), text_style)
                 .draw(display)
                 .unwrap();
-            println!("{}", "no result");
+            log::error!("{}", "no result");
         }
     }
 }
@@ -220,7 +222,7 @@ fn render_weather_icon(condition: &Weather, display: &mut UdpDisplay ){
             Bmp::from_slice(include_bytes!("mist.bmp"))
         },
         _ => {
-            println!("Missing icon for {short_icon_code}");
+            log::error!("Missing icon for {short_icon_code}");
             Text::new(&condition.description, Point::new(0, 0), text_style)
                 .draw(display)
                 .unwrap();
@@ -335,7 +337,7 @@ fn check_connection(ipaddress: String) -> bool {
     let answer = socket.recv_from(&mut package);
     match answer {
         Ok((_n, _addr)) => {
-            //println!("{} bytes response from {:?} {:?}", n, addr, &package[..n]);
+            log::trace!("{} bytes response from {:?} {:?}", _n, _addr, &package[.._n]);
             device_online = true;
         }
         Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
@@ -349,6 +351,7 @@ fn check_connection(ipaddress: String) -> bool {
 }
 
 fn main() -> ExitCode {
+    env_logger::init();
     let args: Vec<String> = env::args().collect();
     match args.len() {
         // no arguments passed
@@ -364,7 +367,7 @@ fn main() -> ExitCode {
 
             let mut device_online = check_connection(ip.to_string());
             if !device_online {
-                println!("{} not online", ip);
+                log::error!("{} not online", ip);
                 return ExitCode::FAILURE;
             }
 
@@ -377,9 +380,9 @@ fn main() -> ExitCode {
             let mut last_data = Option::None;
             
             // Test Webcrawler for public transportataion
-            let mut straba_res = straba::fetch_data(Some(true));
-            println!("Outbound to {} in {} seconds", straba_res.outbound_station, straba_res.outbound_diff);
-            println!("Inbound to {} in {} seconds", straba_res.inbound_station, straba_res.inbound_diff);
+            let mut straba_res = straba::fetch_data();
+            log::info!("Outbound to {} in {} seconds", straba_res.outbound_station, straba_res.outbound_diff);
+            log::info!("Inbound  to {} in {} seconds", straba_res.inbound_station, straba_res.inbound_diff);
 
             // Render start
             send_package(ip.to_string(), &last_data, &straba_res);
@@ -405,9 +408,9 @@ fn main() -> ExitCode {
                     device_online = check_connection(ip.to_string());
                     // request once a minute new data
                     if device_online == true {
-                        straba_res = straba::fetch_data(None);
-                        println!("Update {:?} {:?}s", straba_res.outbound_station, straba_res.outbound_diff);
-                        println!("Update {:?} {:?}s", straba_res.inbound_station , straba_res.inbound_diff);
+                        straba_res = straba::fetch_data();
+                        log::info!("Outbound {:?} {:?}s", straba_res.outbound_station, straba_res.outbound_diff);
+                        log::info!("Inbound  {:?} {:?}s", straba_res.inbound_station , straba_res.inbound_diff);
                     }
                 }
 
