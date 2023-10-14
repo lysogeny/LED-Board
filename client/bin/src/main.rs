@@ -378,8 +378,8 @@ fn main() -> ExitCode {
             
             // Test Webcrawler for public transportataion
             let mut straba_res = straba::fetch_data(Some(true));
-            println!("{:?} {:?}s", straba_res.outbound_station, straba_res.outbound_diff);
-            println!("{:?} {:?}s", straba_res.inbound_station , straba_res.inbound_diff);
+            println!("Outbound to {} in {} seconds", straba_res.outbound_station, straba_res.outbound_diff);
+            println!("Inbound to {} in {} seconds", straba_res.inbound_station, straba_res.inbound_diff);
 
             // Render start
             send_package(ip.to_string(), &last_data, &straba_res);
