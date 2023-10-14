@@ -33,7 +33,7 @@ impl Display {
             .scale(4)
             .build();
         Display {
-            display: SimulatorDisplay::new(Size::new(32 * 5, 40)),
+            display: SimulatorDisplay::new(Size::new(IMAGE_WIDTH, IMAGE_HEIGHT)),
             window: Window::new("LED Board", &output_settings),
         }
     }
@@ -48,19 +48,19 @@ impl Display {
     }
 }
 
-struct Client {
+struct DisplayServer {
     socket: UdpSocket,
     display: Display,
 }
 
 type ImgData = [u8; IMAGE_LENGTH];
 
-impl Client {
-    fn new(addr: &str, port: i32) -> Client {
+impl DisplayServer {
+    fn new(addr: &str, port: i32) -> DisplayServer {
         let addr_full = format!("{addr}:{port}");
         log::info!("Listening on {addr_full}");
         let socket = UdpSocket::bind(addr_full).expect("Couldn't bind");
-        Client {
+        DisplayServer {
             socket,
             display: Display::new(),
         }
@@ -83,7 +83,7 @@ impl Client {
                     log::info!("Responding to status checking message from {}", src_addr);
                     let data = &mut data[..bytes_read];
                     match self.socket.send_to(&data, &src_addr) {
-                        Ok(_) => {}
+                        Ok(_) => {},
                         Err(e) => log::error!("{:}", e),
                     };
                 }
@@ -139,6 +139,6 @@ struct Args {
 fn main() {
     let args = Args::parse();
     env_logger::init();
-    let mut client = Client::new("0.0.0.0", args.port);
+    let mut client = DisplayServer::new("0.0.0.0", args.port);
     client.run();
 }
